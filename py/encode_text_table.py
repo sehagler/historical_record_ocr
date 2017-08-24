@@ -83,32 +83,39 @@ class encode_text_table(object):
             
     #
     def run(self, text_table):
-
-        # cluster y1 values into row indicies
-        text_table, y1_cluster_label = self._cluster_into_rows(text_table)
         
-        num_rows = y1_cluster_label + 1
-                    
-        # cluster x1 values into column indicies
-        text_table = self._cluster_into_columns(text_table, num_rows)
-                            
-        # identify indentation
-        for i in range(len(text_table)):
-            if text_table[i][2] < 15:
-                text_table[i].append(0)
-            elif text_table[i][2] > 15 and text_table[i][2] < 45:
-                text_table[i].append(1)
-            if text_table[i][2] > 45 and text_table[i][2] < 75:
-                text_table[i].append(2)
-            else:
-                text_table[i].append(3)
-                
-        # clean up text table
-        for i in range(len(text_table)):
-            text_table[i] = [ text_table[i][0], text_table[i][5], 
-                              text_table[i][6], text_table[i][7] ]
+        #
+        if text_table == 'Bad JSON File':
+        
+            text_table = [[ '*** BAD JSON FILE ***' , 0, 0, 0 ]]
             
-        # sort text table
-        text_table = self._sort_text_table(text_table, num_rows)
+        else:
+
+            # cluster y1 values into row indicies
+            text_table, y1_cluster_label = self._cluster_into_rows(text_table)
+
+            num_rows = y1_cluster_label + 1
+
+            # cluster x1 values into column indicies
+            text_table = self._cluster_into_columns(text_table, num_rows)
+
+            # identify indentation
+            for i in range(len(text_table)):
+                if text_table[i][2] < 15:
+                    text_table[i].append(0)
+                elif text_table[i][2] > 15 and text_table[i][2] < 45:
+                    text_table[i].append(1)
+                if text_table[i][2] > 45 and text_table[i][2] < 75:
+                    text_table[i].append(2)
+                else:
+                    text_table[i].append(3)
+
+            # clean up text table
+            for i in range(len(text_table)):
+                text_table[i] = [ text_table[i][0], text_table[i][5], 
+                                  text_table[i][6], text_table[i][7] ]
+
+            # sort text table
+            text_table = self._sort_text_table(text_table, num_rows)
         
         return text_table    

@@ -76,6 +76,9 @@ class json_to_text_table(object):
             
     #
     def run(self, json_file):
-        text_table = self._read_text_table_from_json_file(json_file)
-        text_table = self._normalize_text_table(text_table)
+        try:
+            text_table = self._read_text_table_from_json_file(json_file)
+            text_table = self._normalize_text_table(text_table)
+        except:
+            text_table = 'Bad JSON File'
         return text_table      

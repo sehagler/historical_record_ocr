@@ -40,8 +40,21 @@ class text_table_to_entries(object):
                 idx = -1
         entries.append(text)
         return entries
+    
+    #
+    def _join_text_table(self, text_table_segmented):
+        offset = 0
+        for i in range(len(text_table_segmented)):
+            for j in range(len(text_table_segmented[i])):
+                text_table_segmented[i][j][1] += offset
+            offset = text_table_segmented[i][-1][1] + 1
+        text_table_joined = []
+        for i in range(len(text_table_segmented)):
+            text_table_joined += text_table_segmented[i]
+        return text_table_joined 
         
     #
-    def run(self, text_table):
-        entries = self._generate_entries(text_table)
+    def run(self, text_table_segmented):
+        text_table_joined = self._join_text_table(text_table_segmented)
+        entries = self._generate_entries(text_table_joined)
         return entries     
