@@ -101,12 +101,15 @@ class encode_text_table(object):
 
             # identify indentation
             for i in range(len(text_table)):
-                if text_table[i][2] < 15:
-                    text_table[i].append(0)
-                elif text_table[i][2] > 15 and text_table[i][2] < 45:
-                    text_table[i].append(1)
-                if text_table[i][2] > 45 and text_table[i][2] < 75:
-                    text_table[i].append(2)
+                if text_table[i][6] == 0:
+                    if text_table[i][2] < 15:
+                        text_table[i].append(0)
+                    elif text_table[i][2] > 15 and text_table[i][2] < 45:
+                        text_table[i].append(1)
+                    if text_table[i][2] > 45 and text_table[i][2] < 75:
+                        text_table[i].append(2)
+                    else:
+                        text_table[i].append(3)
                 else:
                     text_table[i].append(3)
 

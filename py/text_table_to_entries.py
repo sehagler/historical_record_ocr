@@ -20,7 +20,7 @@ class text_table_to_entries(object):
                     if text_table[i][3] == 0:
                         text += '\n' + text_table[i][0]
                     elif text_table[i][3] == 1:
-                        text += '\n" ' + text_table[i][0]
+                        text += '\n' + text_table[i][0]
                     elif text_table[i][3] == 2:
                         text += ' ' + text_table[i][0]
                     else:

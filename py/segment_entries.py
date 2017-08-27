@@ -109,7 +109,7 @@ class segment_entries(object):
         num_digit_seqs = self._get_num_digit_seqs(entries)
         for i in range(len(entries)):
             entry = entries[i]
-            entry = self._correct_entry(entry)
+            #entry = self._correct_entry(entry)
             entry, telephone_number = self._extract_telephone_number(entry)
             num_digit_seqs = self._get_num_digit_seqs(entry)
             if num_digit_seqs == 1:
