@@ -9,15 +9,10 @@ import re
 class segment_entries(object):
     
     #
-    def __init__(self, txt_dir, txt_filename):
+    def __init__(self, txt_filename):
         
         #
-        self._txt_dir = txt_dir
-        self._txt_filename = txt_filename
-        self._filename = txt_dir + txt_filename
-        
-        #
-        makedirs(self._txt_dir, exist_ok=True)
+        self._filename = txt_filename
             
     # append entries to txt-file
     def _append_entry_to_txt_file(self, entry):
@@ -105,7 +100,7 @@ class segment_entries(object):
         return num_digit_seqs
     
     #
-    def run(self, entries):
+    def run(self, pdf_filename, pdf_page_num, pdf_column_num, entries):
         num_digit_seqs = self._get_num_digit_seqs(entries)
         for i in range(len(entries)):
             entry = entries[i]
@@ -121,7 +116,8 @@ class segment_entries(object):
             else:
                 name = entry
                 address = 'NA'
-            entry = '\'' + name + '\'' + '\t' + address + '\t' + telephone_number + '\n'
+            entry = pdf_filename + '\t' + str(pdf_page_num) + '\t' + str(pdf_column_num) + '\t' \
+                    + '\'' + name + '\'' + '\t' + address + '\t' + telephone_number + '\n'
             entry = ''.join(entry)
             print(entry)
             self._append_entry_to_txt_file(entry)   
