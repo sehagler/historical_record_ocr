@@ -8,12 +8,11 @@ import requests
 class segment_jpg_to_segment_json(object):
     
     #
-    def __init__(self, api_key):
+    def __init__(self, gcv_url, api_key):
         
         #
         self._api_key = api_key
-        self._google_cloud_vision_url = \
-            'https://vision.googleapis.com/v1/images:annotate'
+        self._gcv_url = gcv_url
     
     #
     def _make_image_data_request(self, filename):
@@ -36,22 +35,19 @@ class segment_jpg_to_segment_json(object):
 
     #
     def _request_ocr(self, filename):
-        response = requests.post(self._google_cloud_vision_url,
+        response = requests.post(self._gcv_url,
                                  data=self._make_image_data(filename),
                                  params={'key': self._api_key},
                                  headers={'Content-Type': 'application/json'})
         return response
     
     #
-    def do_ocr(self, segment_jpgs_dir, segment_jsons_dir, filename):
+    def do_ocr(self, jpg_filename, json_filename):
         
-        filename = segment_jpgs_dir + filename
-        
-        response = self._request_ocr(filename)
+        response = self._request_ocr(jpg_filename)
         if response.status_code != 200 or response.json().get('error'):
             print(response.text)
         else:
-            json_file = segment_jsons_dir + basename(filename[:len(filename)-4]) + '.json'
-            with open(json_file, 'w') as f:
+            with open(json_filename, 'w') as f:
                 json_data = json.dumps(response.json()['responses'][0], indent=2)
                 f.write(json_data)

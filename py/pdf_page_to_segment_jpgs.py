@@ -16,18 +16,18 @@ from time import sleep
 class pdf_page_to_segment_jpgs(object):
     
     #
-    def __init__(self, page_image_dir, num_columns, dpi_flg, pdf_input_file):
+    def __init__(self, gs_exe, page_image_dir, num_columns, dpi_flg, pdf_input_file, segment_filename_base):
         
         #
-        self._gsexe = 'C:/Program Files/gs/gs9.21/bin/gswin64'
         self._jpg_tmp_dir = getcwd() + '/jpg_tmp/'
-        
         self._sleep = 5
         
         # Input parameters
         self._dpi_flg = dpi_flg
+        self._gs_exe = gs_exe
         self._num_columns = num_columns
         self._page_image_dir = page_image_dir
+        self._segment_filename_base = segment_filename_base
         
         # Parse DPI flag
         if dpi_flg == '300dpi':
@@ -241,7 +241,7 @@ class pdf_page_to_segment_jpgs(object):
     
     #
     def _read_page_image(self, page_num):
-        args = [ self._gsexe, '-dNOPAUSE', '-sDEVICE=jpeg', '-r' + str(self._dpi) + 'x' + str(self._dpi), 
+        args = [ self._gs_exe, '-dNOPAUSE', '-sDEVICE=jpeg', '-r' + str(self._dpi) + 'x' + str(self._dpi), 
                 '-dFirstPage=' + str(page_num), '-dLastPage=' + str(page_num), 
                 '-sOutputFile=' + self._jpg_tmp_file, self._pdf_input_file ]
         output = Popen(args)
@@ -258,16 +258,16 @@ class pdf_page_to_segment_jpgs(object):
                 idx0 = line_idxs[i*self._line_count_factor]
                 idx1 = line_idxs[(i+1)*self._line_count_factor]
                 segment = column[idx0:idx1]
-                image_file = segment_jpgs_dir + 'segment' + str(segment_ctr) + '.jpg'
+                image_file = segment_jpgs_dir + self._segment_filename_base + str(segment_ctr) + '.jpg'
                 segment_ctr += 1
                 plt.imsave(image_file, segment, cmap=plt.cm.gray)
             if idx1 != len(column):
                 segment = column[idx1:]
-                image_file = segment_jpgs_dir + 'segment' + str(segment_ctr) + '.jpg'
+                image_file = segment_jpgs_dir + self._segment_filename_base + str(segment_ctr) + '.jpg'
                 segment_ctr += 1
                 plt.imsave(image_file, segment, cmap=plt.cm.gray)
         else:
-            image_file = segment_jpgs_dir + 'segment' + str(segment_ctr) + '.jpg'
+            image_file = segment_jpgs_dir + self._segment_filename_base + str(segment_ctr) + '.jpg'
             segment_ctr += 1
             plt.imsave(image_file, column, cmap=plt.cm.gray)
         return segment_ctr
