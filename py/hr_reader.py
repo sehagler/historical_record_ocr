@@ -16,10 +16,6 @@ from text_table_to_entries import text_table_to_entries
 #
 def hr_reader(api_key, pdf_dir, pdf_name, dpi_flg, num_cols, pages):
     
-    opts, args = getopt.getopt(argv)
-    print(opts)
-    print(args)
-    
     #
     segment_filename_base = 'segment_'
     gcv_url = 'https://vision.googleapis.com/v1/images:annotate'

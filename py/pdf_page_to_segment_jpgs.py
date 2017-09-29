@@ -5,7 +5,7 @@ import numpy as np
 from os import getcwd, makedirs
 from PIL import Image
 import re
-from scipy.signal import medfilt, savgol_filter
+from scipy.signal import argrelextrema, medfilt, savgol_filter
 from shutil import copyfile
 from skimage import color, io
 from sklearn.neighbors import KernelDensity
@@ -31,18 +31,23 @@ class pdf_page_to_segment_jpgs(object):
         
         # Parse DPI flag
         if dpi_flg == '300dpi':
-            self._column_means_multiplier = 0.15
-            self._column_savgol_window = 21
+            self._block_means_median_threshold = 0.5
+            self._block_savgol_window = 111
+            self._column_means_max_threshold = 0.15
+            self._column_means_median_threshold = 0.75
+            self._column_savgol_window = 31
             self._dpi = 300
             self._line_count_factor = 10
             self._line_means_percentile = 0.6
-            self._row_means_multiplier = 0.025
+            #self._line_savgol_window = 5
         elif dpi_flg == '600dpi':
+            self._block_savgol_window = 51
             self._column_means_multiplier = 0.5
             self._column_savgol_window = 101
             self._dpi = 600
             self._line_count_factor = 10
             self._line_means_percentile = 0.6
+            self._line_savgol_window = 11
             self._row_means_multiplier = 0.025
         else:
             print('Bad DPI flag')
@@ -132,27 +137,43 @@ class pdf_page_to_segment_jpgs(object):
         row_means = row_sums / sum(row_sums)
         
         #
-        row_means = savgol_filter(row_means, 71, 2)
-        
+        min_row_means = min(row_means)
+        for i in range(len(row_means)):
+            row_means[i] -= min_row_means
+                
         if False:
             plt.plot(row_means)
             plt.show()
         
+        #
+        row_means = savgol_filter(row_means, self._block_savgol_window, 2)
+        
+        if False:
+            plt.plot(row_means)
+            plt.show()
+            
+        #
+        min_row_means = min(row_means)
+        for i in range(len(row_means)):
+            row_means[i] -= min_row_means
+        threshold = self._block_means_median_threshold * np.median(row_means)
+        for i in range(len(row_means)):
+            if row_means[i] > threshold:
+                row_means[i] = threshold
+                
+        if False:
+            plt.plot(row_means)
+            plt.show()
+            
         # Create binary classifier for whether the smooothed density estimate is above or below
         # a given threshold
-        row_idxs = []
-        for i in range(len(row_means)):
-            if row_means[i] < self._row_means_multiplier * np.median(row_means):
-                row_idxs.append(1)
-            else:
-                row_idxs.append(0)
-        
-        #
-        row_idxs = ''.join(map(str,row_idxs))
-        line_idxs = [ i.start() for i in re.finditer('01',row_idxs) ]
-        line_idxs.append(0)
-        line_idxs.append(len(columns[0]))
-        line_idxs = sorted(line_idxs)
+        row_idxs_array = argrelextrema(row_means, np.less)
+        row_idxs_list = list(row_idxs_array[0])
+        row_idxs = row_idxs_list
+        row_idxs.append(0)
+        row_idxs.append(len(columns[0]))
+        row_idxs = set(row_idxs)
+        line_idxs = sorted(row_idxs)
         
         # Isolate the block corresponding to the widest interval between crossings of the 
         # threshold going from 0 to 1
@@ -191,6 +212,15 @@ class pdf_page_to_segment_jpgs(object):
         column_means = column_means / sum(column_means)
         
         #
+        min_column_means = min(column_means)
+        for i in range(len(column_means)):
+            column_means[i] -= min_column_means
+        threshold = self._column_means_max_threshold * max(column_means)
+        for i in range(len(column_means)):
+            if column_means[i] > threshold:
+                column_means[i] = threshold
+        
+        #
         if False:
             plt.plot(column_means)
             plt.show()
@@ -204,29 +234,26 @@ class pdf_page_to_segment_jpgs(object):
         
         # Create binary classifier for whether the smooothed density estimate is above or below
         # a given threshold
-        column_idxs = []
-        for i in range(len(column_means)):
-            if column_means[i] < self._column_means_multiplier * np.median(column_means):
-                column_idxs.append(1)
-            else:
-                column_idxs.append(0)
-                
-        # Find columns of pixels where the smoothed density estimate crosses the threshold
-        # going from 0 to 1
-        column_idxs = ''.join(map(str,column_idxs))
-        line_idxs = [ i.start() for i in re.finditer('01',column_idxs) ]
-        line_idxs.append(0)
-        line_idxs.append(len(image[0]))
-        line_idxs = sorted(line_idxs)
+        column_idxs_array = argrelextrema(column_means, np.less)
+        column_idxs_list = list(column_idxs_array[0])
+        column_idxs = [0] * len(column_means)
+        threshold = self._column_means_median_threshold * np.median(column_means)
+        for i in column_idxs_list:
+            if column_means[i] < threshold:
+                column_idxs.append(i)
+        column_idxs.append(0)
+        column_idxs.append(len(image[0]))
+        column_idxs = set(column_idxs)
+        column_idxs = sorted(column_idxs)
         
         # Isolate the columns corresponding to the N widest intervals between crossings of the 
         # threshold going from 0 to 1 where N is input number of columns expected
-        num_preliminary_columns = len(line_idxs)-1
+        num_preliminary_columns = len(column_idxs)-1
         column_widths = []
         columns = []
         for i in range(num_preliminary_columns):
-            column_widths.append(line_idxs[i+1] - line_idxs[i])
-            columns.append(image[:, line_idxs[i]:line_idxs[i+1]])
+            column_widths.append(column_idxs[i+1] - column_idxs[i])
+            columns.append(image[:, column_idxs[i]:column_idxs[i+1]])
         cut_width = sorted(column_widths, reverse=True)[self._num_columns - 1]
         isolated_columns = []
         for i in range(len(column_widths)):
