@@ -1,5 +1,6 @@
 # Imports
 import cv2
+import math
 import matplotlib.pyplot as plt
 import numpy as np
 from os import getcwd, makedirs
@@ -16,7 +17,10 @@ from time import sleep
 class pdf_page_to_segment_jpgs(object):
     
     #
-    def __init__(self, gs_exe, page_image_dir, num_columns, dpi_flg, pdf_input_file, segment_filename_base):
+    def __init__(self, mode_flg, gs_exe, page_image_dir, num_columns, 
+                 dpi_flg, pdf_input_file, segment_filename_base, 
+                 mean_trimmed_selected_column_widths,
+                 std_trimmed_selected_column_widths):
         
         #
         self._jpg_tmp_dir = getcwd() + '/jpg_tmp/'
@@ -25,9 +29,12 @@ class pdf_page_to_segment_jpgs(object):
         # Input parameters
         self._dpi_flg = dpi_flg
         self._gs_exe = gs_exe
+        self._mean_trimmed_selected_column_widths = mean_trimmed_selected_column_widths
+        self._mode_flg = mode_flg
         self._num_columns = num_columns
         self._page_image_dir = page_image_dir
         self._segment_filename_base = segment_filename_base
+        self._std_trimmed_selected_column_widths = std_trimmed_selected_column_widths
         
         # Parse DPI flag
         if dpi_flg == '300dpi':
@@ -39,7 +46,8 @@ class pdf_page_to_segment_jpgs(object):
             self._dpi = 300
             self._line_count_factor = 10
             self._line_means_percentile = 0.6
-            #self._line_savgol_window = 5
+            self._lower_n_sigma = 6
+            self._upper_n_sigma = 6
         elif dpi_flg == '600dpi':
             self._block_savgol_window = 51
             self._column_means_multiplier = 0.5
@@ -51,7 +59,15 @@ class pdf_page_to_segment_jpgs(object):
             self._row_means_multiplier = 0.025
         else:
             print('Bad DPI flag')
-        
+            
+        # Derived parameters
+        self._column_width_adjustment = 0.5 * self._lower_n_sigma * \
+                                        self._std_trimmed_selected_column_widths
+        self._column_width_lower_bound = self._mean_trimmed_selected_column_widths - \
+                                         self._lower_n_sigma * self._std_trimmed_selected_column_widths
+        self._column_width_upper_bound = self._mean_trimmed_selected_column_widths + \
+                                         self._upper_n_sigma * self._std_trimmed_selected_column_widths
+                
         # Create data directories
         makedirs(self._jpg_tmp_dir, exist_ok=True)
         makedirs(self._page_image_dir, exist_ok=True)
@@ -74,7 +90,8 @@ class pdf_page_to_segment_jpgs(object):
         (h, w) = image.shape[:2]
         center = (w // 2, h // 2)
         M = cv2.getRotationMatrix2D(center, angle, 1.0)
-        deskewed = cv2.warpAffine(image, M, (w, h), flags=cv2.INTER_CUBIC, borderMode=cv2.BORDER_REPLICATE)
+        deskewed = cv2.warpAffine(image, M, (w, h), flags=cv2.INTER_CUBIC,
+                                  borderMode=cv2.BORDER_REPLICATE)
         
         # Return deskewed mask of image
         return deskewed
@@ -108,6 +125,8 @@ class pdf_page_to_segment_jpgs(object):
         line_idxs.append(0)
         line_idxs.append(len(image))
         line_idxs = sorted(line_idxs)
+        
+        #
         return line_idxs
     
     #
@@ -188,9 +207,6 @@ class pdf_page_to_segment_jpgs(object):
         #
         for i in range(len(columns)):
             columns[i] = columns[i][line_idxs[0]:line_idxs[1], :]
-            
-            if True:
-                self._display_image(columns[i],0)
         
         #
         return columns
@@ -221,14 +237,14 @@ class pdf_page_to_segment_jpgs(object):
                 column_means[i] = threshold
         
         #
-        if True:
+        if False:
             plt.plot(column_means)
             plt.show()
         
         column_means = savgol_filter(column_means, self._column_savgol_window, 2)
         
         #
-        if True:
+        if False:
             plt.plot(column_means)
             plt.show()
         
@@ -246,34 +262,58 @@ class pdf_page_to_segment_jpgs(object):
         column_idxs = set(column_idxs)
         column_idxs = sorted(column_idxs)
         
+        #
+        column_idxs_table = []
+        for i in range(len(column_idxs)-1):
+            idx0 = column_idxs[i]
+            idx1 = column_idxs[i+1]
+            if self._mode_flg == 1:
+                max_idx = column_idxs[-1]
+                if idx1 - idx0 < self._column_width_lower_bound:
+                    idx0 = max([0, math.ceil(idx0 - self._column_width_adjustment)])
+                    idx1 = min([max_idx, math.floor(idx1 + self._column_width_adjustment)])
+            column_idxs_table.append([idx0, idx1])
+        
         # Isolate the columns corresponding to the N widest intervals between crossings of the 
         # threshold going from 0 to 1 where N is input number of columns expected
-        num_preliminary_columns = len(column_idxs)-1
+        num_preliminary_columns = len(column_idxs_table)
         column_widths = []
         columns = []
-        for i in range(num_preliminary_columns):
-            column_widths.append(column_idxs[i+1] - column_idxs[i])
-            columns.append(image[:, column_idxs[i]:column_idxs[i+1]])
-        cut_width = sorted(column_widths, reverse=True)[self._num_columns - 1]
-        isolated_columns = []
-        for i in range(len(column_widths)):
-            if column_widths[i] >= cut_width:
-                isolated_columns.append(columns[i])
-                
-                if False:
-                    self._display_image(columns[i],0)
-
-        # Return isolated columns
-        return isolated_columns
+        cut_width = []
+        for i in range(len(column_idxs_table)):
+            column_widths.append(column_idxs_table[i][1] - column_idxs_table[i][0])
+            columns.append(image[:, column_idxs_table[i][0]:column_idxs_table[i][1]])
+        if len(column_widths) >= self._num_columns:
+            cut_width = sorted(column_widths, reverse=True)[self._num_columns - 1]
+        
+        #
+        return columns, column_widths, cut_width
     
     #
-    def _read_page_image(self, page_num):
-        args = [ self._gs_exe, '-dNOPAUSE', '-sDEVICE=jpeg', '-r' + str(self._dpi) + 'x' + str(self._dpi), 
-                '-dFirstPage=' + str(page_num), '-dLastPage=' + str(page_num), 
+    def _read_page_image(self, page):
+        
+        #
+        args = [ self._gs_exe, '-dNOPAUSE', '-qNOPROMPT', '-qNODISPLAY', '-sDEVICE=jpeg', 
+                '-r' + str(self._dpi) + 'x' + str(self._dpi), 
+                '-dFirstPage=' + str(page), '-dLastPage=' + str(page), 
                 '-sOutputFile=' + self._jpg_tmp_file, self._pdf_input_file ]
         output = Popen(args)
-        sleep(self._sleep)
-        image = cv2.imread(self._jpg_tmp_file)
+        
+        #
+        image = []
+        ctr = 10
+        read_flg = False
+        while not read_flg and ctr > 0:
+            ctr -= 1
+            sleep(self._sleep)
+            try:
+                image = cv2.imread(self._jpg_tmp_file)
+                image = self._deskew_image(image)
+                read_flg = True
+            except:
+                pass
+            
+        #
         return image
         
     #
@@ -300,30 +340,71 @@ class pdf_page_to_segment_jpgs(object):
         return segment_ctr
                
     #
-    def run(self, page_num, segment_jpgs_dir):
+    def run(self, page, segment_jpgs_dir):
         
         # Read page image
-        image = self._read_page_image(page_num)  
+        image = self._read_page_image(page)
         
         #
-        image = self._deskew_image(image)
-        image = self._image_mask(image, False)
-        
-        #
-        self._display_image(image, 0)
-        
-        #
-        columns = self._isolate_columns_of_text(image)
-        columns = self._isolate_blocks_of_text(columns)
-        
-        #
-        segment_ctr = 0
         segment_map = []
-        for i in range(len(columns)):
-            segment_map_tmp = []
-            segment_map_tmp.append(i)
-            segment_map_tmp.append(segment_ctr)
-            segment_ctr = self._segment_column(columns[i], segment_ctr, segment_jpgs_dir)
-            segment_map_tmp.append(segment_ctr)
-            segment_map.append(segment_map_tmp)
-        return segment_map
+        if len(image) > 0:
+        
+            #
+            image = self._image_mask(image, False)
+
+            #
+            columns, column_widths, cut_width = self._isolate_columns_of_text(image)
+
+            if self._mode_flg == 0:
+
+                #
+                selected_column_widths = []
+                for column_width in column_widths:
+                    if column_width >= cut_width:
+                        selected_column_widths.append(column_width)
+
+                #
+                return column_widths, cut_width, selected_column_widths
+
+            elif self._mode_flg == 1:
+
+                #
+                if False:
+                    self._display_image(image, 0)
+
+                good_page_flg = True
+
+                #
+                isolated_columns = []
+                for i in range(len(column_widths)):
+                    if column_widths[i] >= cut_width:
+                        if column_widths[i] >= self._column_width_lower_bound and \
+                           column_widths[i] <= self._column_width_upper_bound:
+                            isolated_columns.append(columns[i])
+                            if False:
+                                self._display_image(columns[i],0)
+                        else:
+                            good_page_flg = False
+
+                #
+                if good_page_flg:
+
+                    #
+                    columns = isolated_columns
+                    columns = self._isolate_blocks_of_text(columns)
+
+                    #
+                    segment_ctr = 0
+                    for i in range(len(columns)):
+                        segment_map_tmp = []
+                        segment_map_tmp.append(i)
+                        segment_map_tmp.append(segment_ctr)
+                        segment_ctr = self._segment_column(columns[i], segment_ctr, segment_jpgs_dir)
+                        segment_map_tmp.append(segment_ctr)
+                        segment_map.append(segment_map_tmp)
+                        
+            else:
+                print('PDF page read timed out.')
+                
+            #
+            return segment_map

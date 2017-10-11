@@ -25,6 +25,5 @@ class file_writer(object):
             entry = pdf_filename + '\t' + str(pdf_page_num) + '\t' + str(pdf_column_num) + '\t' \
                     + '\'' + entries[i] +'\'' + '\n'
             entry = ''.join(entry)
-            print(entry)
             self._append_entry_to_txt_file(entry)   
         
