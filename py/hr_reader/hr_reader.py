@@ -83,9 +83,11 @@ def hr_reader(api_key, pdf_dir, pdf_name, dpi_flg, num_cols, pages):
                                           mean_trimmed_selected_column_widths,
                                           std_trimmed_selected_column_widths)
     jpg_to_json = segment_jpg_to_segment_json(gcv_url, api_key)
+    fl_wrtr = file_writer(directory_txt_file)
 
     # Read pages from PDF
     failed_pages = []
+    summary_pages = []
     for page in pages:
         
         #
@@ -112,9 +114,20 @@ def hr_reader(api_key, pdf_dir, pdf_name, dpi_flg, num_cols, pages):
             
             if False:
             
-                unsegment_page(jpg_to_json, segment_map, segment_jpgs_dir, 
-                               segment_jsons_dir, segment_filename_base,
-                               directory_txt_file, pdf_name, page)
+                #
+                entries, num_lines, num_dittos = \
+                    unsegment_page(jpg_to_json, segment_map, segment_jpgs_dir, 
+                                   segment_jsons_dir, segment_filename_base,page)
+                
+                #
+                num_entries = []
+                for i in range(len(entries)):
+                    num_entries.append(len(entries[i]))
+                summary_pages.append([ page, num_lines, num_entries, num_dittos ])
+                       
+                #
+                for i in range(len(entries)):
+                    fl_wrtr.run(pdf_name, page, i+1, entries[i])
                 
         else:
                 
@@ -122,6 +135,7 @@ def hr_reader(api_key, pdf_dir, pdf_name, dpi_flg, num_cols, pages):
             print('Image segmentation failed.')
             
     print(failed_pages)
+    print(summary_pages)
             
 #
 def segment_page(pg_to_jpgs, page_num, segment_jpgs_dir, 
@@ -139,6 +153,7 @@ def unsegment_column(jpg_to_json, segment_map, segment_jpgs_dir, segment_jsons_d
 
     #
     text_table = []
+    start_idx = segment_map[1]
     for i in range(segment_map[1],segment_map[2]):
 
         #
@@ -147,7 +162,15 @@ def unsegment_column(jpg_to_json, segment_map, segment_jpgs_dir, segment_jsons_d
 
         #
         #jpg_to_json.do_ocr(jpg_filename, json_filename)
-        text_table_tmp = json_to_text_table().run(json_filename)
+        
+        #
+        json_to_txt_tbl = json_to_text_table()
+        if i == start_idx:
+            first_segment_flg = True
+        else:
+            first_segment_flg = False
+        first_segment_flg
+        text_table_tmp = json_to_txt_tbl.run(first_segment_flg, json_filename)
         text_table.append(encode_text_table().run(text_table_tmp))
         
     #
@@ -155,19 +178,28 @@ def unsegment_column(jpg_to_json, segment_map, segment_jpgs_dir, segment_jsons_d
 
 #
 def unsegment_page(jpg_to_json, segment_map, segment_jpgs_dir, segment_jsons_dir, 
-                   segment_filename_base, directory_txt_file, pdf_name, page_num):
+                   segment_filename_base, page_num):
     
     #
+    entries = []
+    num_dittos = []
+    num_lines = []
     for i in range(len(segment_map)):
                 
         #
-        column_num = i + 1
         text_table = unsegment_column(jpg_to_json, segment_map[i], segment_jpgs_dir, 
                                       segment_jsons_dir, segment_filename_base)
         text_table = correct_text_table(text_table)
 
         #
-        entries = text_table_to_entries().run(text_table)
-        entries = correct_entries(entries)
-        fl_wrtr = file_writer(directory_txt_file)
-        fl_wrtr.run(pdf_name, page_num, column_num, entries)
+        entries_tmp, num_lines_tmp, num_dittos_tmp = \
+            text_table_to_entries().run(text_table)
+        #entries_tmp = correct_entries(entries_tmp)
+        
+        #
+        entries.append(entries_tmp)
+        num_lines.append(num_lines_tmp)
+        num_dittos.append(num_dittos_tmp)
+        
+    #
+    return entries, num_lines, num_dittos

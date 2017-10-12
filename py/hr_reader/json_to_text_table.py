@@ -7,6 +7,12 @@ import re
 class json_to_text_table(object):
     
     #
+    def __init__(self):
+        
+        #
+        self._min_x1 = 0
+    
+    #
     def _filter_description(self, desc):
         
         # correct non-spurious non-ASCII characters to ASCII
@@ -33,16 +39,23 @@ class json_to_text_table(object):
         return desc
     
     #
-    def _normalize_text_table(self, text_table):
+    def _normalize_text_table_horizontal(self, first_segment_flg, text_table):
+        if first_segment_flg:
+            x1 = [ x[2] for x in text_table ]
+            self._min_x1 = max([ min(x1), 0 ])
+        print(self._min_x1)
+        for i in range(len(text_table)):
+            text_table[i][2] -= self._min_x1
+            text_table[i][4] -= self._min_x1
+        return text_table
+    
+    #
+    def _normalize_text_table_vertical(self, text_table):
         y1 = [ x[1] for x in text_table ]
-        x1 = [ x[2] for x in text_table ]
         min_y1 = min(y1)
-        min_x1 = min(x1)
         for i in range(len(text_table)):
             text_table[i][1] -= min_y1
-            text_table[i][2] -= min_x1
             text_table[i][3] -= min_y1
-            text_table[i][4] -= min_x1
         return text_table
         
     # read text from json file
@@ -75,10 +88,11 @@ class json_to_text_table(object):
         return text_table
             
     #
-    def run(self, json_file):
+    def run(self, first_segment_flg, json_file):
         try:
             text_table = self._read_text_table_from_json_file(json_file)
-            text_table = self._normalize_text_table(text_table)
+            text_table = self._normalize_text_table_horizontal(first_segment_flg, text_table)
+            text_table = self._normalize_text_table_vertical(text_table)
         except:
             text_table = 'Bad JSON File'
         return text_table      

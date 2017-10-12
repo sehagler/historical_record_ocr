@@ -9,7 +9,6 @@ import re
 from scipy.signal import argrelextrema, medfilt, savgol_filter
 from shutil import copyfile
 from skimage import color, io
-from sklearn.neighbors import KernelDensity
 from subprocess import Popen
 from time import sleep
 
@@ -23,31 +22,35 @@ class pdf_page_to_segment_jpgs(object):
                  std_trimmed_selected_column_widths):
         
         #
+        self._gs_read_timout = 60
+        self._gs_sleep = 3
         self._jpg_tmp_dir = getcwd() + '/jpg_tmp/'
-        self._sleep = 5
+        self._restored_std_offset = 0
+        self._restored_width_offset = 0
         
         # Input parameters
         self._dpi_flg = dpi_flg
         self._gs_exe = gs_exe
-        self._mean_trimmed_selected_column_widths = mean_trimmed_selected_column_widths
+        self._mean_trimmed_selected_column_widths = 633 #mean_trimmed_selected_column_widths
         self._mode_flg = mode_flg
         self._num_columns = num_columns
         self._page_image_dir = page_image_dir
         self._segment_filename_base = segment_filename_base
-        self._std_trimmed_selected_column_widths = std_trimmed_selected_column_widths
+        self._std_trimmed_selected_column_widths = 7.16 #std_trimmed_selected_column_widths
         
         # Parse DPI flag
         if dpi_flg == '300dpi':
             self._block_means_median_threshold = 0.5
             self._block_savgol_window = 111
             self._column_means_max_threshold = 0.15
-            self._column_means_median_threshold = 0.75
+            self._column_means_median_threshold = 0.9
             self._column_savgol_window = 71
+            self._convolution_box_size = 50
             self._dpi = 300
-            self._line_count_factor = 10
-            self._line_means_percentile = 0.6
+            self._line_count_factor = 100
+            self._line_means_median_threshold = 5
             self._lower_n_sigma = 6
-            self._upper_n_sigma = 6
+            self._upper_n_sigma = 45
         elif dpi_flg == '600dpi':
             self._block_savgol_window = 51
             self._column_means_multiplier = 0.5
@@ -61,8 +64,7 @@ class pdf_page_to_segment_jpgs(object):
             print('Bad DPI flag')
             
         # Derived parameters
-        self._column_width_adjustment = 0.5 * self._lower_n_sigma * \
-                                        self._std_trimmed_selected_column_widths
+        self._max_delta_column = 6 * self._std_trimmed_selected_column_widths
         self._column_width_lower_bound = self._mean_trimmed_selected_column_widths - \
                                          self._lower_n_sigma * self._std_trimmed_selected_column_widths
         self._column_width_upper_bound = self._mean_trimmed_selected_column_widths + \
@@ -106,11 +108,15 @@ class pdf_page_to_segment_jpgs(object):
         for i in range(len(image)):
             line_means.append(sum(medfilt_edges[i]) / 255)
         line_means = line_means / sum(line_means)
+        
+        if False:
+            plt.plot(line_means)
+            plt.show()
             
         #   
         row_idxs = []
         for i in range(len(line_means)):
-            if line_means[i] > np.percentile(line_means, self._line_means_percentile):
+            if line_means[i] > self._line_means_median_threshold * np.median(line_means):
                 row_idxs.append(1)
             else:
                 row_idxs.append(0)
@@ -242,6 +248,8 @@ class pdf_page_to_segment_jpgs(object):
             plt.show()
         
         column_means = savgol_filter(column_means, self._column_savgol_window, 2)
+        box = np.ones(self._convolution_box_size)/self._convolution_box_size
+        column_means = np.convolve(column_means, box, mode='same')
         
         #
         if False:
@@ -267,11 +275,24 @@ class pdf_page_to_segment_jpgs(object):
         for i in range(len(column_idxs)-1):
             idx0 = column_idxs[i]
             idx1 = column_idxs[i+1]
-            if self._mode_flg == 1:
+            if False: #self._mode_flg == 1:
                 max_idx = column_idxs[-1]
-                if idx1 - idx0 < self._column_width_lower_bound:
-                    idx0 = max([0, math.ceil(idx0 - self._column_width_adjustment)])
-                    idx1 = min([max_idx, math.floor(idx1 + self._column_width_adjustment)])
+                width = idx1 - idx0
+                if width < self._column_width_lower_bound:
+                    lower_delta_column = \
+                        min([0.5*(1 + self._restored_width_offset) * \
+                             (self._column_width_lower_bound - width) + \
+                             (2 + self._restored_std_offset) * \
+                             self._std_trimmed_selected_column_widths,
+                             self._max_delta_column])
+                    upper_delta_column = \
+                        min([0.5*(1 - self._restored_width_offset) * \
+                             (self._column_width_lower_bound - width) + \
+                             (2 - self._restored_std_offset) * \
+                             self._std_trimmed_selected_column_widths,
+                             self._max_delta_column])
+                    idx0 = max([0, math.ceil(idx0 - lower_delta_column)])
+                    idx1 = min([max_idx, math.floor(idx1 + upper_delta_column)])
             column_idxs_table.append([idx0, idx1])
         
         # Isolate the columns corresponding to the N widest intervals between crossings of the 
@@ -301,11 +322,11 @@ class pdf_page_to_segment_jpgs(object):
         
         #
         image = []
-        ctr = 10
+        ctr = self._gs_read_timout // self._gs_sleep
         read_flg = False
         while not read_flg and ctr > 0:
             ctr -= 1
-            sleep(self._sleep)
+            sleep(self._gs_sleep)
             try:
                 image = cv2.imread(self._jpg_tmp_file)
                 image = self._deskew_image(image)
@@ -318,8 +339,10 @@ class pdf_page_to_segment_jpgs(object):
         
     #
     def _segment_column(self, column, segment_ctr, segment_jpgs_dir):
-        line_idxs = self._detect_lines_of_text(column)
-        num_segments = (len(line_idxs)-1)//self._line_count_factor
+        #line_idxs = self._detect_lines_of_text(column)
+        #num_segments = (len(line_idxs)-1)//self._line_count_factor
+        num_segments = 1
+        line_idxs = [ 0, len(column) ]
         if len(line_idxs) > 2:
             for i in range(num_segments):
                 idx0 = line_idxs[i*self._line_count_factor]
