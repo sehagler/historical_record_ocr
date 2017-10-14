@@ -50,11 +50,10 @@ def hr_reader(api_key, pdf_dir, pdf_name, dpi_flg, num_cols, pages):
     
     #
     prelim_info = pdf_page_to_segment_jpgs(0, gs_exe, directory_pages_dir, num_cols, dpi_flg, 
-                                          directory_pdf_file, segment_filename_base, 0, 0)
+                                          directory_pdf_file, segment_filename_base, 0, 0, 0, 0)
     
     #
-    column_widths = []
-    cut_widths = []
+    selected_column_heights = []
     selected_column_widths = [] 
     for page in pages:
         
@@ -65,23 +64,25 @@ def hr_reader(api_key, pdf_dir, pdf_name, dpi_flg, num_cols, pages):
             print("%d " % page, end="")
             
         #
-        column_widths_tmp, cut_widths_tmp, selected_column_widths_tmp = \
+        selected_column_widths_tmp, selected_column_heights_tmp = \
             prelim_info.run(page, ' ')
-        for column_width in column_widths_tmp:
-            column_widths.append(column_width)
-        cut_widths.append(cut_widths_tmp)
         for selected_column_width in selected_column_widths_tmp:
             selected_column_widths.append(selected_column_width)
+        for selected_column_height in selected_column_heights_tmp:
+            selected_column_heights.append(selected_column_height)
             
     #
-    mean_trimmed_selected_column_widths, std_trimmed_selected_column_widths = \
-        preliminary_stats(column_widths, cut_widths, selected_column_widths)
+    mean_trimmed_selected_column_widths, std_trimmed_selected_column_widths, \
+    mean_trimmed_selected_column_heights, std_trimmed_selected_column_heights = \
+         preliminary_stats(selected_column_widths, selected_column_heights)
 
     #
     pg_to_jpgs = pdf_page_to_segment_jpgs(1, gs_exe, directory_pages_dir, num_cols, 
                                           dpi_flg, directory_pdf_file, segment_filename_base,
                                           mean_trimmed_selected_column_widths,
-                                          std_trimmed_selected_column_widths)
+                                          std_trimmed_selected_column_widths,
+                                          mean_trimmed_selected_column_heights,
+                                          std_trimmed_selected_column_heights)
     jpg_to_json = segment_jpg_to_segment_json(gcv_url, api_key)
     fl_wrtr = file_writer(directory_txt_file)
 

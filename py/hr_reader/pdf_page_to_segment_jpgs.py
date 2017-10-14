@@ -19,7 +19,9 @@ class pdf_page_to_segment_jpgs(object):
     def __init__(self, mode_flg, gs_exe, page_image_dir, num_columns, 
                  dpi_flg, pdf_input_file, segment_filename_base, 
                  mean_trimmed_selected_column_widths,
-                 std_trimmed_selected_column_widths):
+                 std_trimmed_selected_column_widths,
+                 mean_trimmed_selected_column_heights,
+                 std_trimmed_selected_column_heights):
         
         #
         self._gs_read_timout = 60
@@ -31,26 +33,28 @@ class pdf_page_to_segment_jpgs(object):
         # Input parameters
         self._dpi_flg = dpi_flg
         self._gs_exe = gs_exe
-        self._mean_trimmed_selected_column_widths = 633 #mean_trimmed_selected_column_widths
+        self._mean_trimmed_selected_column_heights = mean_trimmed_selected_column_heights
+        self._mean_trimmed_selected_column_widths = mean_trimmed_selected_column_widths
         self._mode_flg = mode_flg
         self._num_columns = num_columns
         self._page_image_dir = page_image_dir
         self._segment_filename_base = segment_filename_base
-        self._std_trimmed_selected_column_widths = 7.16 #std_trimmed_selected_column_widths
+        self._std_trimmed_selected_column_heights = std_trimmed_selected_column_heights
+        self._std_trimmed_selected_column_widths = std_trimmed_selected_column_widths
         
         # Parse DPI flag
         if dpi_flg == '300dpi':
             self._block_means_median_threshold = 0.5
             self._block_savgol_window = 111
             self._column_means_max_threshold = 0.15
-            self._column_means_median_threshold = 0.9
+            self._column_means_median_threshold = 0.95
             self._column_savgol_window = 71
-            self._convolution_box_size = 50
+            self._convolution_box_size = 100
             self._dpi = 300
-            self._line_count_factor = 100
-            self._line_means_median_threshold = 5
-            self._lower_n_sigma = 6
-            self._upper_n_sigma = 45
+            #self._line_count_factor = 100
+            #self._line_means_median_threshold = 5
+            self._lower_n_sigma = 7
+            self._upper_n_sigma = 22
         elif dpi_flg == '600dpi':
             self._block_savgol_window = 51
             self._column_means_multiplier = 0.5
@@ -64,7 +68,6 @@ class pdf_page_to_segment_jpgs(object):
             print('Bad DPI flag')
             
         # Derived parameters
-        self._max_delta_column = 6 * self._std_trimmed_selected_column_widths
         self._column_width_lower_bound = self._mean_trimmed_selected_column_widths - \
                                          self._lower_n_sigma * self._std_trimmed_selected_column_widths
         self._column_width_upper_bound = self._mean_trimmed_selected_column_widths + \
@@ -99,47 +102,31 @@ class pdf_page_to_segment_jpgs(object):
         return deskewed
     
     #
-    def _detect_lines_of_text(self, image):
-        
-        #
-        edges = cv2.Canny(image,0,0)
-        medfilt_edges = medfilt(edges)
-        line_means = []
-        for i in range(len(image)):
-            line_means.append(sum(medfilt_edges[i]) / 255)
-        line_means = line_means / sum(line_means)
-        
-        if False:
-            plt.plot(line_means)
-            plt.show()
-            
-        #   
-        row_idxs = []
-        for i in range(len(line_means)):
-            if line_means[i] > self._line_means_median_threshold * np.median(line_means):
-                row_idxs.append(1)
-            else:
-                row_idxs.append(0)
-                
-        #
-        row_idxs = ''.join(map(str,row_idxs))
-        row_idxs = row_idxs.replace('010','000')
-        row_idxs = row_idxs.replace('101','111')
-        row_idxs = row_idxs.replace('0110','0000')
-        row_idxs = row_idxs.replace('1001','1111')
-        line_idxs = [ i.start() for i in re.finditer('01',row_idxs) ]
-        line_idxs.append(0)
-        line_idxs.append(len(image))
-        line_idxs = sorted(line_idxs)
-        
-        #
-        return line_idxs
-    
-    #
     def _display_image(self, image, subplot_idx):
         plt.subplot(121 + subplot_idx),plt.imshow(image,cmap = 'gray')
         plt.title('Image'), plt.xticks([]), plt.yticks([])
         plt.show()
+        
+    #
+    def _filter(self, input_means, input_savgol_window):
+        
+        #
+        if False:
+            plt.plot(input_means)
+            plt.show()
+        
+        #
+        input_means = savgol_filter(input_means, input_savgol_window, 2)
+        box = np.ones(self._convolution_box_size)/self._convolution_box_size
+        output_means = np.convolve(input_means, box, mode='same')
+        
+        #
+        if False:
+            plt.plot(output_means)
+            plt.show()
+            
+        #
+        return output_means
     
     #
     def _image_mask(self, image, invert_flg):
@@ -165,17 +152,9 @@ class pdf_page_to_segment_jpgs(object):
         min_row_means = min(row_means)
         for i in range(len(row_means)):
             row_means[i] -= min_row_means
-                
-        if False:
-            plt.plot(row_means)
-            plt.show()
         
         #
-        row_means = savgol_filter(row_means, self._block_savgol_window, 2)
-        
-        if False:
-            plt.plot(row_means)
-            plt.show()
+        row_means = self._filter(row_means, self._block_savgol_window)
             
         #
         min_row_means = min(row_means)
@@ -213,9 +192,13 @@ class pdf_page_to_segment_jpgs(object):
         #
         for i in range(len(columns)):
             columns[i] = columns[i][line_idxs[0]:line_idxs[1], :]
+            
+        #
+        column_height = len(columns[0])
+        column_heights = [ column_height, column_height, column_height ]
         
         #
-        return columns
+        return columns, column_heights
     
     #
     def _isolate_columns_of_text(self, image):
@@ -243,18 +226,7 @@ class pdf_page_to_segment_jpgs(object):
                 column_means[i] = threshold
         
         #
-        if False:
-            plt.plot(column_means)
-            plt.show()
-        
-        column_means = savgol_filter(column_means, self._column_savgol_window, 2)
-        box = np.ones(self._convolution_box_size)/self._convolution_box_size
-        column_means = np.convolve(column_means, box, mode='same')
-        
-        #
-        if False:
-            plt.plot(column_means)
-            plt.show()
+        column_means = self._filter(column_means, self._column_savgol_window)
         
         # Create binary classifier for whether the smooothed density estimate is above or below
         # a given threshold
@@ -275,24 +247,6 @@ class pdf_page_to_segment_jpgs(object):
         for i in range(len(column_idxs)-1):
             idx0 = column_idxs[i]
             idx1 = column_idxs[i+1]
-            if False: #self._mode_flg == 1:
-                max_idx = column_idxs[-1]
-                width = idx1 - idx0
-                if width < self._column_width_lower_bound:
-                    lower_delta_column = \
-                        min([0.5*(1 + self._restored_width_offset) * \
-                             (self._column_width_lower_bound - width) + \
-                             (2 + self._restored_std_offset) * \
-                             self._std_trimmed_selected_column_widths,
-                             self._max_delta_column])
-                    upper_delta_column = \
-                        min([0.5*(1 - self._restored_width_offset) * \
-                             (self._column_width_lower_bound - width) + \
-                             (2 - self._restored_std_offset) * \
-                             self._std_trimmed_selected_column_widths,
-                             self._max_delta_column])
-                    idx0 = max([0, math.ceil(idx0 - lower_delta_column)])
-                    idx1 = min([max_idx, math.floor(idx1 + upper_delta_column)])
             column_idxs_table.append([idx0, idx1])
         
         # Isolate the columns corresponding to the N widest intervals between crossings of the 
@@ -309,6 +263,21 @@ class pdf_page_to_segment_jpgs(object):
         
         #
         return columns, column_widths, cut_width
+    
+    #
+    def _normalize_means(self, input_means, input_means_max_threshold):
+        
+        #
+        min_input_means = min(input_means)
+        for i in range(len(input_means)):
+            input_means[i] -= min_input_means
+        threshold = input_means_max_threshold * median(input_means)
+        for i in range(len(input_means)):
+            if input_means[i] > threshold:
+                input_means[i] = threshold
+                
+        #
+        return input_means
     
     #
     def _read_page_image(self, page):
@@ -339,8 +308,6 @@ class pdf_page_to_segment_jpgs(object):
         
     #
     def _segment_column(self, column, segment_ctr, segment_jpgs_dir):
-        #line_idxs = self._detect_lines_of_text(column)
-        #num_segments = (len(line_idxs)-1)//self._line_count_factor
         num_segments = 1
         line_idxs = [ 0, len(column) ]
         if len(line_idxs) > 2:
@@ -385,9 +352,18 @@ class pdf_page_to_segment_jpgs(object):
                 for column_width in column_widths:
                     if column_width >= cut_width:
                         selected_column_widths.append(column_width)
+                        
+                #
+                isolated_columns = []
+                for i in range(len(column_widths)):
+                    isolated_columns.append(columns[i])
+                    
+                #
+                columns = isolated_columns
+                columns, selected_column_heights = self._isolate_blocks_of_text(columns)
 
                 #
-                return column_widths, cut_width, selected_column_widths
+                return selected_column_widths, selected_column_heights
 
             elif self._mode_flg == 1:
 
@@ -414,7 +390,7 @@ class pdf_page_to_segment_jpgs(object):
 
                     #
                     columns = isolated_columns
-                    columns = self._isolate_blocks_of_text(columns)
+                    columns, column_heights = self._isolate_blocks_of_text(columns)
 
                     #
                     segment_ctr = 0
