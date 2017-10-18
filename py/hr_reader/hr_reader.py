@@ -11,9 +11,9 @@ from correct_text_table import correct_text_table
 from encode_text_table import encode_text_table
 from file_writer import file_writer
 from json_to_text_table import json_to_text_table
-from pdf_page_to_segment_jpgs import pdf_page_to_segment_jpgs
+from pdf_page_to_segment_pngs import pdf_page_to_segment_pngs
 from preliminary_stats import preliminary_stats
-from segment_jpg_to_segment_json import segment_jpg_to_segment_json
+from segment_png_to_segment_json import segment_png_to_segment_json
 from text_table_to_entries import text_table_to_entries
 
 #
@@ -32,7 +32,7 @@ def hr_reader(api_key, pdf_dir, pdf_name, dpi_flg, num_cols, pages):
     makedirs(directory_dir, exist_ok=True)
 
     #
-    directory_pdf_dir = directory_dir + '/pdf/'
+    directory_pdf_dir = directory_dir + 'pdf/'
     makedirs(directory_pdf_dir, exist_ok=True)
 
     #
@@ -40,16 +40,31 @@ def hr_reader(api_key, pdf_dir, pdf_name, dpi_flg, num_cols, pages):
     copyfile(pdf_file, directory_pdf_file)
 
     #
-    directory_pages_dir = directory_dir + '/pages/'
+    directory_pages_dir = directory_dir + 'pages/'
     makedirs(directory_pages_dir, exist_ok=True)
 
     #
-    directory_txt_dir = directory_dir + '/txt/'
+    directory_txt_dir = directory_dir + 'txt/'
     makedirs(directory_txt_dir, exist_ok=True)
     directory_txt_file = directory_txt_dir + pdf_name[:len(pdf_name)-4] + '.txt'
     
     #
-    prelim_info = pdf_page_to_segment_jpgs(0, gs_exe, directory_pages_dir, num_cols, dpi_flg, 
+    for page in pages:
+
+        #
+        page_json_dir = directory_pages_dir + 'page_' + str(page) + '/json/'
+        makedirs(page_json_dir, exist_ok=True)
+        
+        #
+        page_npy_dir = directory_pages_dir + 'page_' + str(page) + '/npy/'
+        makedirs(page_npy_dir, exist_ok=True)
+        
+        #
+        page_png_dir = directory_pages_dir + 'page_' + str(page) + '/png/'
+        makedirs(page_png_dir, exist_ok=True)
+    
+    #
+    prelim_run = pdf_page_to_segment_pngs(0, gs_exe, directory_pages_dir, num_cols, dpi_flg, 
                                           directory_pdf_file, segment_filename_base, 0, 0, 0, 0)
     
     #
@@ -64,8 +79,13 @@ def hr_reader(api_key, pdf_dir, pdf_name, dpi_flg, num_cols, pages):
             print("%d " % page, end="")
             
         #
+        page_json_dir = directory_pages_dir + 'page_' + str(page) + '/json/'
+        page_npy_dir = directory_pages_dir + 'page_' + str(page) + '/npy/'
+        page_png_dir = directory_pages_dir + 'page_' + str(page) + '/png/'
+            
+        #
         selected_column_widths_tmp, selected_column_heights_tmp = \
-            prelim_info.run(page, ' ')
+            prelim_run.run(page, page_png_dir, page_npy_dir)
         for selected_column_width in selected_column_widths_tmp:
             selected_column_widths.append(selected_column_width)
         for selected_column_height in selected_column_heights_tmp:
@@ -77,13 +97,13 @@ def hr_reader(api_key, pdf_dir, pdf_name, dpi_flg, num_cols, pages):
          preliminary_stats(selected_column_widths, selected_column_heights)
 
     #
-    pg_to_jpgs = pdf_page_to_segment_jpgs(1, gs_exe, directory_pages_dir, num_cols, 
-                                          dpi_flg, directory_pdf_file, segment_filename_base,
-                                          mean_trimmed_selected_column_widths,
-                                          std_trimmed_selected_column_widths,
-                                          mean_trimmed_selected_column_heights,
-                                          std_trimmed_selected_column_heights)
-    jpg_to_json = segment_jpg_to_segment_json(gcv_url, api_key)
+    segment_run = pdf_page_to_segment_pngs(1, gs_exe, directory_pages_dir, num_cols, 
+                                           dpi_flg, directory_pdf_file, segment_filename_base,
+                                           mean_trimmed_selected_column_widths,
+                                           std_trimmed_selected_column_widths,
+                                           mean_trimmed_selected_column_heights,
+                                           std_trimmed_selected_column_heights)
+    png_to_json = segment_png_to_segment_json(gcv_url, api_key)
     fl_wrtr = file_writer(directory_txt_file)
 
     # Read pages from PDF
@@ -96,17 +116,14 @@ def hr_reader(api_key, pdf_dir, pdf_name, dpi_flg, num_cols, pages):
             print(page)
         else:
             print("%d " % page, end="")
+            
+        #
+        page_json_dir = directory_pages_dir + 'page_' + str(page) + '/json/'
+        page_npy_dir = directory_pages_dir + 'page_' + str(page) + '/npy/'
+        page_png_dir = directory_pages_dir + 'page_' + str(page) + '/png/'
 
         #
-        segment_jpgs_dir = directory_pages_dir + 'page_' + str(page) + '_segments/jpgs/'
-        makedirs(segment_jpgs_dir, exist_ok=True)
-
-        #
-        segment_jsons_dir = directory_pages_dir + 'page_' + str(page) + '_segments/jsons/'
-        makedirs(segment_jsons_dir, exist_ok=True)
-
-        #
-        segment_map = segment_page(pg_to_jpgs, page, segment_jpgs_dir, 
+        segment_map = segment_page(segment_run, page, page_npy_dir, page_png_dir, 
                                    mean_trimmed_selected_column_widths,
                                    std_trimmed_selected_column_widths)
         
@@ -117,8 +134,8 @@ def hr_reader(api_key, pdf_dir, pdf_name, dpi_flg, num_cols, pages):
             
                 #
                 entries, num_lines, num_dittos = \
-                    unsegment_page(jpg_to_json, segment_map, segment_jpgs_dir, 
-                                   segment_jsons_dir, segment_filename_base,page)
+                    unsegment_page(png_to_json, segment_map, page_json_dir, 
+                                   page_png_dir, segment_filename_base,page)
                 
                 #
                 num_entries = []
@@ -139,18 +156,18 @@ def hr_reader(api_key, pdf_dir, pdf_name, dpi_flg, num_cols, pages):
     print(summary_pages)
             
 #
-def segment_page(pg_to_jpgs, page_num, segment_jpgs_dir, 
+def segment_page(pg_to_jpgs, page_num, page_npy_dir, page_png_dir, 
                  mean_trimmed_selected_column_widths,
                  std_trimmed_selected_column_widths):
 
     #
-    segment_map = pg_to_jpgs.run(page_num, segment_jpgs_dir)
+    segment_map = pg_to_jpgs.run(page_num, page_png_dir, page_npy_dir)
     
     #
     return segment_map
             
 #
-def unsegment_column(jpg_to_json, segment_map, segment_jpgs_dir, segment_jsons_dir, segment_filename_base):
+def unsegment_column(png_to_json, segment_map, page_json_dir, page_png_dir, segment_filename_base):
 
     #
     text_table = []
@@ -158,11 +175,11 @@ def unsegment_column(jpg_to_json, segment_map, segment_jpgs_dir, segment_jsons_d
     for i in range(segment_map[1],segment_map[2]):
 
         #
-        jpg_filename = segment_jpgs_dir + segment_filename_base + str(i) + '.jpg'
-        json_filename = segment_jsons_dir + segment_filename_base + str(i) + '.json'
+        json_filename = page_json_dir + segment_filename_base + str(i) + '.json'
+        png_filename = page_tiff_dir + segment_filename_base + str(i) + '.png'
 
         #
-        #jpg_to_json.do_ocr(jpg_filename, json_filename)
+        png_to_json.do_ocr(tiff_filename, json_filename)
         
         #
         json_to_txt_tbl = json_to_text_table()
@@ -178,7 +195,7 @@ def unsegment_column(jpg_to_json, segment_map, segment_jpgs_dir, segment_jsons_d
     return text_table
 
 #
-def unsegment_page(jpg_to_json, segment_map, segment_jpgs_dir, segment_jsons_dir, 
+def unsegment_page(png_to_json, segment_map, page_png_dir, page_json_dir, 
                    segment_filename_base, page_num):
     
     #
@@ -188,8 +205,8 @@ def unsegment_page(jpg_to_json, segment_map, segment_jpgs_dir, segment_jsons_dir
     for i in range(len(segment_map)):
                 
         #
-        text_table = unsegment_column(jpg_to_json, segment_map[i], segment_jpgs_dir, 
-                                      segment_jsons_dir, segment_filename_base)
+        text_table = unsegment_column(png_to_json, segment_map[i], page_png_dir, 
+                                      page_json_dir, segment_filename_base)
         text_table = correct_text_table(text_table)
 
         #
