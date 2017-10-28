@@ -15,6 +15,7 @@ def preliminary_stats(selected_column_widths, selected_column_heights):
     mean_trimmed_selected_column_heights = np.mean(trimmed_selected_column_heights)
     std_trimmed_selected_column_heights = np.std(trimmed_selected_column_heights)
     
+    print("\n")
     print(mean_trimmed_selected_column_widths)
     print(std_trimmed_selected_column_widths)
     print(mean_trimmed_selected_column_heights)

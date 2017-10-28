@@ -20,10 +20,11 @@ class file_writer(object):
             myfile.write(entry)
     
     #
-    def run(self, pdf_filename, pdf_page_num, pdf_column_num, entries):
+    def run(self, pdf_filename, pdf_city, pdf_year, pdf_page_num, pdf_column_num, entries):
         for i in range(len(entries)):
-            entry = pdf_filename + '\t' + str(pdf_page_num) + '\t' + str(pdf_column_num) + '\t' \
-                    + '\'' + entries[i] +'\'' + '\n'
+            entry = pdf_filename + '\t' + pdf_city + '\t' + str(pdf_year) + '\t' \
+                    + str(pdf_page_num) + '\t' + str(pdf_column_num) + '\t' + '\'' \
+                    + entries[i] +'\'' + '\n'
             entry = ''.join(entry)
             self._append_entry_to_txt_file(entry)   
         
