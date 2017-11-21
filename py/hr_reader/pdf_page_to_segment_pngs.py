@@ -59,23 +59,23 @@ class pdf_page_to_segment_pngs(object):
             self._upper_n_sigma = 22
         elif dpi_flg == '600dpi':
             self._block_amplitude_coeff = 0.0
-            self._block_convolution_box_size = 201
+            self._block_convolution_box_size = 301
             self._block_convolution_num = 1
             self._block_convolution_sigma = 100
-            self._block_means_first_median_threshold = 0.9
-            self._block_means_second_median_threshold = 0.5
-            self._block_mins_window = -1
-            self._block_savgol_window = 301
-            self._column_amplitude_coeff = 0.1
-            self._column_convolution_box_size = 21
+            self._block_means_first_median_threshold = 0.75
+            self._block_means_second_median_threshold = 0.75
+            self._block_mins_window = 1000
+            self._block_savgol_window = 3
+            self._column_amplitude_coeff = 0.15
+            self._column_convolution_box_size = 51
             self._column_convolution_num = 1
             self._column_convolution_sigma = 20
-            self._column_means_first_median_threshold = 0.50
-            self._column_means_second_median_threshold = 0.75
+            self._column_means_first_median_threshold = 0.60
+            self._column_means_second_median_threshold = 0.80
             self._column_mins_window = 1200
-            self._column_savgol_window = 3
+            self._column_savgol_window = 21
             self._dpi = 600
-            self._lower_n_sigma = 11
+            self._lower_n_sigma = 6
             self._margin_width = 50
             self._upper_n_sigma = 22
         else:
@@ -163,11 +163,6 @@ class pdf_page_to_segment_pngs(object):
         for i in range(len(input_means)):
             input_means[i] = amplitude[i] * input_means[i]
         
-        # Display means for debugging
-        if False:
-            plt.plot(input_means)
-            plt.show()
-        
         # Apply Savgol filter to means
         filtered_means = savgol_filter(input_means, input_savgol_window, 2)
         
@@ -214,15 +209,16 @@ class pdf_page_to_segment_pngs(object):
         # Generate indicies to be used to segment columns into distinct blocks such that the blocks
         # of text are expected to be entirely contained in a block and any extra content in 
         # the margins in other blocks
+        row_means = self._normalize_means(row_means, self._block_means_first_median_threshold)
         row_means = self._filter(row_means, self._block_amplitude_coeff, 
                                  self._block_savgol_window, self._block_convolution_box_size,
                                  self._block_convolution_num, self._block_convolution_sigma)
-        row_means = self._normalize_means(row_means, self._block_means_first_median_threshold)
-        line_idxs = self._local_mins(len(columns[0]), row_means, 
-                                     self._block_means_second_median_threshold,
-                                     self._block_mins_window)
+        row_idxs = self._local_mins(len(columns[0]), row_means, 
+                                    self._block_means_second_median_threshold,
+                                    self._block_mins_window)
         
-        # 
+        #
+        line_idxs = row_idxs
         line_idxs_table = []
         for i in range(len(line_idxs) - 1):
             line_idxs_table.append([ line_idxs[i], line_idxs[i+1], line_idxs[i+1] - line_idxs[i] ])
@@ -306,8 +302,8 @@ class pdf_page_to_segment_pngs(object):
             local_mins_idxs_tmp = local_mins_idxs
             local_mins_idxs = []
             for idx in local_mins_idxs_tmp:
-                if idx > 0.5 * input_mins_window and \
-                   idx < image_length - 0.5 * input_mins_window:
+                if idx > 0.3 * input_mins_window and \
+                   idx < image_length - 0.3 * input_mins_window:
                     local_mins_idxs.append(idx)
             local_mins_idxs_tmp = local_mins_idxs
             local_mins_idxs = []

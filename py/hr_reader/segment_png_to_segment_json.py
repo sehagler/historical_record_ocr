@@ -1,6 +1,6 @@
 # Imports
 from base64 import b64encode
-from os.path import basename
+import os.path
 import json
 import requests
 
@@ -46,8 +46,19 @@ class segment_png_to_segment_json(object):
         
         response = self._request_ocr(jpg_filename)
         if response.status_code != 200 or response.json().get('error'):
+            print('GCP error.  ')
             print(response.text)
         else:
-            with open(json_filename, 'w') as f:
-                json_data = json.dumps(response.json()['responses'][0], indent=2)
-                f.write(json_data)
+            retry_ctr = 10
+            retry_flg = True
+            while retry_flg and retry_ctr > 0:
+                with open(json_filename, 'w') as f:
+                    json_data = json.dumps(response.json()['responses'][0], indent=2)
+                    f.write(json_data)
+                if os.path.isfile(json_filename):
+                    retry_flg = False
+                else:
+                    retry_ctr -= 1
+        
+        #
+        return True
