@@ -7,48 +7,47 @@ sys.path.insert(0, 'py/hr_tools')
 from file_writer import file_writer
 
 #
-def hr_text_corrector1(sect_dir, pdf_name):
+def hr_text_corrector1(sect_dir, file_idx, pdf_name):
     
     #
     directory_dir = sect_dir
     
     #
     directory_txt_dir = directory_dir + 'txt/'
-    directory_txt_infile = directory_txt_dir + pdf_name[:len(pdf_name)-4] + '0.txt'
-    directory_txt_outfile = directory_txt_dir + pdf_name[:len(pdf_name)-4] + '1.txt'
+    directory_txt_infile = directory_txt_dir + pdf_name[:len(pdf_name)-4] + \
+                           str(file_idx) + '.txt'
+    directory_txt_outfile = directory_txt_dir + pdf_name[:len(pdf_name)-4] + \
+                            str(file_idx+1) + '.txt'
     
     #
     fl_wrtr = file_writer(directory_txt_outfile)
     
     #
     current_column = 0
+    current_surname = []
     with open(directory_txt_infile, 'r') as f:
         for line in f:
-            
+
             #
             itr = re.finditer(r'\t', line)
             idxs = [idx.start() for idx in itr]
             idx = idxs[-1]
-            line_metadata = line[:idx]
+            line_metadata = line[:idxs[-1]]
             line_data = line[idx+1:len(line)-1]
-            
+
             #           
             column = line_metadata[-1]
             if column != current_column:
                 current_surname = []
                 current_column = column
-            
+
             #
             line_data = correct_ditto(line_data)
             line_data = correct_h_r_address(line_data)
-            line_data = correct_parentheses(line_data)
-            line_data = correct_missing_space(line_data)
-            line_data = correct_line_continuation(line_data)
             line_data, current_surname = resolve_dittos(line_data, current_surname)
             
             #
             entry = line_metadata + '\t' + line_data + '\n'
-            print(entry)
             entries = [ entry ]          
             fl_wrtr.run(entries)
             
@@ -78,31 +77,6 @@ def correct_h_r_address(line_data):
             replace_str = match.group(0)
             replace_str = replace_str[:2] + replace_str[3:]
             line_data = re.sub(match_str, replace_str, line_data)
-    return line_data
-
-#
-def correct_line_continuation(line_data):
-    line_data = re.sub('- ', '', line_data)
-    return line_data
-
-#
-def correct_missing_space(line_data):
-    match_list = re.findall('[A-Z][a-z]+[A-Z][a-z]+', line_data)
-    for match_str in match_list:
-        match = re.search('[a-z][A-Z]', match_str)
-        idx = match_str.index(match.group(0))
-        replace_str_1 = match_str[:idx+1] 
-        replace_str_2 = match_str[idx+1:]
-        if replace_str_1 != 'Mac' and \
-           replace_str_1 != 'Mc':
-            replace_str = replace_str_1 + ' ' + replace_str_2
-            line_data = re.sub(match_str, replace_str, line_data)
-    return line_data
-
-#
-def correct_parentheses(line_data):
-    line_data = re.sub('\( ', '(', line_data)
-    line_data = re.sub(' \)', ')', line_data)
     return line_data
 
 #
