@@ -7,15 +7,18 @@ sys.path.insert(0, 'py/hr_tools')
 from file_writer import file_writer
 
 #
-def hr_text_segmenter(sect_dir, pdf_name):
+def hr_text_segmenter(sect_dir, file_idx, pdf_name):
     
     #
     directory_dir = sect_dir
     
     #
     directory_txt_dir = directory_dir + 'txt/'
-    directory_txt_infile = directory_txt_dir + pdf_name[:len(pdf_name)-4] + '1.txt'
-    directory_txt_outfile = directory_txt_dir + pdf_name[:len(pdf_name)-4] + '2.txt'
+    directory_txt_infile = directory_txt_dir + pdf_name[:len(pdf_name)-4] + \
+                           str(file_idx) + '.txt'
+    directory_txt_outfile = directory_txt_dir + pdf_name[:len(pdf_name)-4] + \
+                            str(file_idx+1) + '.txt'
+    
     
     #
     fl_wrtr = file_writer(directory_txt_outfile)
