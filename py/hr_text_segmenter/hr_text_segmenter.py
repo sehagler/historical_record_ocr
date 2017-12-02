@@ -55,7 +55,11 @@ def hr_text_segmenter(sect_dir, file_idx, pdf_name):
             #
             num_digit_seqs = get_num_digit_seqs(line_data)
             if num_digit_seqs == 1:
-                line_data, business_address = extract_business_numerical_address(line_data)
+                line_data, business_address = extract_business_single_numerical_address(line_data)
+            elif num_digit_seqs == 2:
+                line_data, business_address = extract_business_double_numerical_address(line_data)
+            elif num_digit_seqs == 3:
+                line_data, business_address = extract_business_triple_numerical_address(line_data)
             
             #
             entry = line_metadata + '\t' + line_data + '\t' + business_address + '\t' + \
@@ -74,8 +78,27 @@ def get_num_digit_seqs(line_data):
     return num_digit_seqs
 
 # 
-def extract_business_numerical_address(line_data):
-    match = re.search(' [0-9]', line_data)
+def extract_business_double_numerical_address(line_data):
+    address = 'NA'
+    match_strs = [ ' [0-9]+TH', ' APT [0-9]+', ' R[0-9]+' ]
+    for match_str in match_strs:
+        match1 = re.search(' [0-9]+ ', line_data)
+        match2 = re.search(match_str, line_data.upper())
+        if match1 is not None and match2 is not None:
+            if match1.start() < match2.start():
+                try:
+                    bracket_idx = line_data.index('<')
+                    address = line_data[match1.start()+1:bracket_idx-1]
+                    line_data = line_data[:match1.start()+1] + '<BUSINESS ADDRESS>' + \
+                                line_data[bracket_idx:]
+                except:
+                    address = line_data[match1.start()+1:]
+                    line_data = line_data[:match1.start()+1] + '<BUSINESS ADDRESS>'
+    return line_data, address
+
+# 
+def extract_business_single_numerical_address(line_data):
+    match = re.search(' [0-9]+ ', line_data)
     if match is not None:
         try:
             bracket_idx = line_data.index('<')
@@ -88,6 +111,27 @@ def extract_business_numerical_address(line_data):
     else:
         address = 'NA'
     return line_data, address
+
+# 
+def extract_business_triple_numerical_address(line_data):
+    address = 'NA'
+    match_strs = [ ' [0-9]+TH ' ]
+    for match_str in match_strs:
+        match1 = re.search(' [0-9]+ ', line_data)
+        match2 = re.search(match_str, line_data.upper())
+        match3 = re.search(' R[0-9]+', line_data)
+        if match1 is not None and match2 is not None and match3 is not None:
+            if match1.start() < match2.start() and match2.start() < match3.start():
+                try:
+                    bracket_idx = line_data.index('<')
+                    address = line_data[match1.start()+1:bracket_idx-1]
+                    line_data = line_data[:match1.start()+1] + '<BUSINESS ADDRESS>' + \
+                                line_data[bracket_idx:]
+                except:
+                    address = line_data[match1.start()+1:]
+                    line_data = line_data[:match1.start()+1] + '<BUSINESS ADDRESS>'
+    return line_data, address
+
             
 # 
 def extract_residential_nonnumerical_address(line_data, residence_type):
@@ -121,14 +165,14 @@ def extract_residential_numerical_address(line_data, residence_type):
 
 # extract telephone number from entry
 def extract_telephone_number(line_data):
-    match_str = 'Tel [A-Za-z]+ [0-9]+'
-    match = re.search(match_str, line_data)
-    if match is None:
-        telephone_number = 'NA'
-    else:
-        telephone_number = match.group(0)
-        telephone_number = telephone_number[4:]
-        line_data = re.sub(match_str, '<TELEPHONE NUMBER>', line_data)
+    telephone_number = 'NA'
+    match_strs = [ 'Tel [A-Za-z]+ [0-9]{4}' ]
+    for match_str in match_strs:
+        match = re.search(match_str, line_data)
+        if match is not None:
+            telephone_number = match.group(0)
+            line_data = re.sub(telephone_number, '<TELEPHONE NUMBER>', line_data)
+            telephone_number = telephone_number[4:]
     return line_data, telephone_number
             
 #
