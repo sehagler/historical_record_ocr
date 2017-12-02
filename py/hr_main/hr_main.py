@@ -2,10 +2,12 @@
 import sys
 
 # Local Imports
+sys.path.insert(0, 'py/hr_evaluation')
 sys.path.insert(0, 'py/hr_reader')
 sys.path.insert(0, 'py/hr_text_builder')
 sys.path.insert(0, 'py/hr_text_corrector')
 sys.path.insert(0, 'py/hr_text_segmenter')
+from hr_evaluation import hr_evaluation
 from hr_reader import hr_reader
 from hr_text_builder import hr_text_builder
 from hr_text_corrector1 import hr_text_corrector1
@@ -44,3 +46,4 @@ def hr_main(api_key,  pdf_automated_segmentation_flg, pdf_city, pdf_year, dpi_fl
                        xlsx_occupation_abbr)
     hr_text_corrector4(sect_dir, 4, pdf_name, xlsx_dir, xlsx_first_name_abbr, xlsx_general_abbr,
                        xlsx_occupation_abbr)
+    hr_evaluation(sect_dir, 5, pdf_name)
