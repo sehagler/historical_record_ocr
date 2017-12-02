@@ -25,7 +25,7 @@ def correct_text_table(text_table):
                text_table[i][j][3] == 1:
                 text_table[i][j][3] = 0
                 row_idx_increment += 1
-            text_table[i][j][1] += row_idx_increment      
+            text_table[i][j][1] += row_idx_increment
  
     # Correct non-consecutive entry indicies
     for i in range(len(text_table)):

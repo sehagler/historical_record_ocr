@@ -10,7 +10,7 @@ class encode_text_table(object):
         
         #
         self._indent_base = 90
-        self._row_cluster_threshold = 0.5
+        self._row_cluster_threshold = 0.25
     
     # cluster x1 values into column indicies
     def _cluster_into_columns(self, text_table, num_rows):

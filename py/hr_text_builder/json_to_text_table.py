@@ -19,7 +19,7 @@ class json_to_text_table(object):
         # correct non-spurious non-ASCII characters to ASCII
         idx = re.search('\u00bd', desc)
         if idx:
-            desc = desc[:idx.start()] + '1/2' + desc[idx.start()+6:]
+            desc = desc[:idx.start()] + ' 1/2 ' + desc[idx.start()+6:]
         
         # remove spurious non-ASCII characters
         desc = ''.join([x for x in desc if ord(x) < 128])
