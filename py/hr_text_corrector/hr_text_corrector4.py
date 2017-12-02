@@ -41,6 +41,7 @@ def hr_text_corrector4(sect_dir, file_idx, pdf_name, xlsx_dir, xlsx_first_name_a
     
     #
     current_column = 0
+    current_surname = []
     with open(directory_txt_infile, 'r') as f:
         for line in f:
             
@@ -92,7 +93,8 @@ def resolve_dittos(business_address, residential_address):
     if match is not None:
         address_str = 'DITTO'
         if residential_address == 'DITTO':
-            address_str = business_address
+            if business_address != 'NA':
+                address_str = business_address
         else:
             sub_match = re.search(r'[0-9]+ DITTO', residential_address)
             if sub_match is not None:

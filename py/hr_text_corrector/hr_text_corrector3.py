@@ -70,6 +70,7 @@ def add_spaces(text_data):
     text_data = re.sub('\(', '( ', text_data)
     text_data = re.sub('\)', ' )', text_data)
     text_data = re.sub('-', ' - ', text_data)
+    text_data = re.sub('\\t', ' \\t ', text_data)
     return text_data
     
 #
@@ -89,6 +90,7 @@ def remove_spaces(text_data):
     text_data = re.sub('\( ', '(', text_data)
     text_data = re.sub(' \)', ')', text_data)
     text_data = re.sub(' - ', '-', text_data)
+    text_data = re.sub(' \\t ', '\\t', text_data)
     return text_data
 
 #
