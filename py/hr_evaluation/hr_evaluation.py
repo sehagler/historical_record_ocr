@@ -37,10 +37,11 @@ def hr_evaluation(sect_dir, file_idx, pdf_name):
             idxs = [idx.start() for idx in itr]
             line_metadata = line[:idxs[4]]
             line_data = line[idxs[4]+1:idxs[5]]
-            business_address = line[idxs[5]+1:idxs[6]]
-            residence_type = line[idxs[6]+1:idxs[7]]
-            residential_address = line[idxs[7]+1:idxs[8]]
-            telephone_number = line[idxs[8]+1:]
+            occupation = line[idxs[5]+1:idxs[6]]
+            business_address = line[idxs[6]+1:idxs[7]]
+            residence_type = line[idxs[7]+1:idxs[8]]
+            residential_address = line[idxs[8]+1:idxs[9]]
+            telephone_number = line[idxs[9]+1:]
             
             column = line_metadata[-1]
             
@@ -63,7 +64,7 @@ def hr_evaluation(sect_dir, file_idx, pdf_name):
                 good_entry_ctr += 1
                 
             #
-            entry = line + '\t' + start_character_str + '\t' + \
+            entry = line[:len(line)-1] + '\t' + start_character_str + '\t' + \
                     address_str + '\t' + good_entry_str + '\n'
                 
             #if good_entry_str != 'IS_GOOD_ENTRY':
