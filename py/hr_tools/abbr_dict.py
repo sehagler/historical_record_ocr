@@ -1,6 +1,6 @@
 # Imports
-from xlrd import open_workbook
 import re
+from xlrd import open_workbook
 
 #
 def abbr_dict(upper_flg, mode_flg, xlsx_file):
@@ -26,7 +26,8 @@ def abbr_dict(upper_flg, mode_flg, xlsx_file):
 
 #
 def dict_correction(dictionary, text_str):
-    for key in dictionary.keys():
+    key_list = sorted(list(dictionary.keys()), key = len, reverse = True)
+    for key in key_list:
         match = re.search(key, text_str)
         if match is not None:
             text_str = re.sub(key, dictionary[key], text_str)
