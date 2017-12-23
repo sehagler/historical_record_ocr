@@ -4,7 +4,7 @@ import sys
 
 # Local Imports
 sys.path.insert(0, 'py/hr_tools')
-from abbr_dict import abbr_dict, dict_correction
+from abbr_dict import abbr_dict, abbr_dict_occupations, dict_correction
 from file_writer import file_writer
 
 #
@@ -27,7 +27,7 @@ def hr_text_corrector3(sect_dir, file_idx, pdf_name, xlsx_dir, xlsx_first_name_a
     xlsx_file = xlsx_dir + xlsx_general_abbr
     general_abbr_dict_upper_2 = abbr_dict(True, 2, xlsx_file)
     xlsx_file = xlsx_dir + xlsx_occupation_abbr
-    occupation_abbr_dict_upper_2 = abbr_dict(True, 2, xlsx_file)
+    occupation_abbr_dict_upper_2 = abbr_dict_occupations(True, 2, xlsx_file)
     
     #
     fl_wrtr = file_writer(directory_txt_outfile)
@@ -46,24 +46,27 @@ def hr_text_corrector3(sect_dir, file_idx, pdf_name, xlsx_dir, xlsx_first_name_a
             idxs = [idx.start() for idx in itr]
             idx = idxs[4]
             column = line[idxs[3]+1:idxs[4]]
+            line_metadata = line[:idxs[4]].upper()
             line_data = line[idx+1:len(line)-1]
             
             if column == current_column:
-                line_metadata = line[:idxs[4]].upper()
+                metadata.append(line_metadata)
                 text_data.append(' ' + line_data + ' <NEWLINE>')
             else:
                 if len(text_data) > 0:
                     text_data = correct_text_data(first_name_abbr_dict_upper_2,
                                                   general_abbr_dict_upper_2,
                                                   occupation_abbr_dict_upper_2, text_data)
-                    write_to_file(fl_wrtr, line_metadata, text_data)
+                    write_to_file(fl_wrtr, metadata, text_data)
                 current_column = column
+                metadata = []
+                metadata.append(line_metadata)
                 text_data = []
                 text_data.append(' ' + line_data + ' <NEWLINE>')
                 
     text_data = correct_text_data(first_name_abbr_dict_upper_2, general_abbr_dict_upper_2,
                                   occupation_abbr_dict_upper_2, text_data)
-    write_to_file(fl_wrtr, line_metadata, text_data)
+    write_to_file(fl_wrtr, metadata, text_data)
    
 #
 def add_spaces(text_data):
@@ -94,7 +97,7 @@ def remove_spaces(text_data):
     return text_data
 
 #
-def write_to_file(fl_wrtr, line_metadata, text_data):
+def write_to_file(fl_wrtr, metadata, text_data):
     text_data = text_data[1:len(text_data)-10]
     itr = re.finditer(r' <NEWLINE> ', text_data)
     idxs = [idx.start() for idx in itr]
@@ -102,7 +105,8 @@ def write_to_file(fl_wrtr, line_metadata, text_data):
     idxs = idxs + [len(text_data)]
     idxs = sorted(idxs)
     text_data_out = []
-    for i in range(len(idxs)-1):
+    for i in range(len(metadata)):
+        line_metadata = metadata[i]
         if i == 0:
             text_data_out.append(line_metadata + '\t' + text_data[idxs[i]:idxs[i+1]] + '\n')
         else:

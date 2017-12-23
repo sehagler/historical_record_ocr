@@ -4,7 +4,7 @@ import sys
 
 # Local Imports
 sys.path.insert(0, 'py/hr_tools')
-from abbr_dict import abbr_dict, dict_correction
+from abbr_dict import abbr_dict, abbr_dict_occupations, dict_correction
 from file_writer import file_writer
 
 #
@@ -29,8 +29,8 @@ def hr_text_corrector4(sect_dir, file_idx, pdf_name, xlsx_dir, xlsx_first_name_a
     general_abbr_dict_both_2 = abbr_dict(False, 2, xlsx_file)
     general_abbr_dict_upper_2 = abbr_dict(True, 2, xlsx_file)
     xlsx_file = xlsx_dir + xlsx_occupation_abbr
-    occupation_abbr_dict_both_2 = abbr_dict(False, 2, xlsx_file)
-    occupation_abbr_dict_upper_2 = abbr_dict(True, 2, xlsx_file)
+    occupation_abbr_dict_both_2 = abbr_dict_occupations(False, 2, xlsx_file)
+    occupation_abbr_dict_upper_2 = abbr_dict_occupations(True, 2, xlsx_file)
     
     #
     xlsx_file = xlsx_dir + xlsx_general_abbr
