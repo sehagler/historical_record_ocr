@@ -121,10 +121,11 @@ def reconstruct_document(directory_txt_file, pages, segment_map_list, directory_
                 for i in range(len(entries)):
                     full_entries_tmp = []
                     for entry in entries[i]:
-                        entry_str = pdf_name + '\t' + pdf_city + '\t' + str(pdf_year) + '\t' \
-                                    + str(page) + '\t' + str(i+1) + '\t' + entry + '\n'
-                        entry_str = ''.join(entry_str)
-                        full_entries_tmp.append(entry_str)
+                        if len(entry) > 0:
+                            entry_str = pdf_name + '\t' + pdf_city + '\t' + str(pdf_year) + '\t' \
+                                        + str(page) + '\t' + str(i+1) + '\t' + entry + '\n'
+                            entry_str = ''.join(entry_str)
+                            full_entries_tmp.append(entry_str)
                     full_entries.append(full_entries_tmp)
                        
                 #
