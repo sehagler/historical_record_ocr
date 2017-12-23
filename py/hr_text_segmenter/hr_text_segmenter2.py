@@ -20,6 +20,7 @@ def hr_text_segmenter2(sect_dir, file_idx, pdf_name, xlsx_dir, xlsx_occupation_a
         rowval = rowvals[1].value
         if rowval != '':
             occupation_list.append(rowval.upper())
+            occupation_list.append('HEAD ' + rowval.upper())
     occupation_list = list(set(occupation_list))
     occupation_list.sort(key = lambda x:len(x), reverse = True)
     
@@ -67,17 +68,20 @@ def hr_text_segmenter2(sect_dir, file_idx, pdf_name, xlsx_dir, xlsx_occupation_a
 
 #
 def extract_occupation(occupation_list, line_data):
-    occupation = 'NA'
+    occupation = ''
     for i in range(len(occupation_list)):
         match = re.search(occupation_list[i], line_data);
         if match is not None:
             if match.start() != 0 and line_data[match.start()-1] == ' ':
                 submatch = re.search('<', line_data)
                 if submatch is None:
-                    occupation = line_data[match.start():]
                     line_data = line_data[:match.start()] + '<OCCUPATION>'
+                    occupation = line_data[match.start():] + occupation
                 else:
-                    occupation = line_data[match.start():submatch.start()]
+                    occupation = line_data[match.start():submatch.start()] + occupation
                     line_data = line_data[:match.start()] + '<OCCUPATION>' + \
                                 line_data[submatch.start():]
+                line_data = line_data.replace('<OCCUPATION><OCCUPATION>', '<OCCUPATION>')
+    if len(occupation) == 0:
+        occupation = 'NA'
     return line_data, occupation
