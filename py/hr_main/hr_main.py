@@ -39,9 +39,10 @@ def hr_main(api_key,  pdf_automated_segmentation_flg, pdf_city, pdf_year, dpi_fl
                         num_cols, pdf_pages, pdf_segment_map_list)
 
     #
-    hr_text_corrector1(sect_dir, 0, pdf_name)
-    hr_text_corrector2(sect_dir, 1, pdf_name, xlsx_dir, xlsx_first_name_abbr, xlsx_general_abbr,
-                       xlsx_occupation_abbr)
+    global_excluded_surnames_list = hr_text_corrector1(sect_dir, 0, pdf_name, xlsx_dir,
+                                                       xlsx_first_name_abbr, xlsx_general_abbr,
+                                                       xlsx_occupation_abbr)
+    hr_text_corrector2(sect_dir, 1, pdf_name, global_excluded_surnames_list)
     hr_text_segmenter1(sect_dir, 2, pdf_name)
     hr_text_corrector3(sect_dir, 3, pdf_name, xlsx_dir, xlsx_first_name_abbr, xlsx_general_abbr,
                        xlsx_occupation_abbr)
