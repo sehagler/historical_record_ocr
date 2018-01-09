@@ -5,6 +5,7 @@ from xlrd import open_workbook
 
 # Local Imports
 sys.path.insert(0, 'py/hr_tools')
+from abbr_dict import get_occupation_list
 from file_writer import file_writer
 
 #
@@ -12,17 +13,7 @@ def hr_text_segmenter2(sect_dir, file_idx, pdf_name, xlsx_dir, xlsx_occupation_a
     
     #
     xlsx_file = xlsx_dir + xlsx_occupation_abbr
-    book = open_workbook(xlsx_file)
-    sheet = book.sheets()[0]
-    occupation_list = []
-    for i in range(sheet.nrows):
-        rowvals = sheet.row(i)
-        rowval = rowvals[1].value
-        if rowval != '':
-            occupation_list.append(rowval.upper())
-            occupation_list.append('HEAD ' + rowval.upper())
-    occupation_list = list(set(occupation_list))
-    occupation_list.sort(key = lambda x:len(x), reverse = True)
+    occupation_list = get_occupation_list(xlsx_file)
     
     #
     directory_dir = sect_dir

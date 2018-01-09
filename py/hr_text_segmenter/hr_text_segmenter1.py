@@ -55,12 +55,13 @@ def hr_text_segmenter1(sect_dir, file_idx, pdf_name):
                         
             #
             num_digit_seqs = get_num_digit_seqs(line_data)
-            if num_digit_seqs == 1:
-                line_data, business_address = extract_business_single_numerical_address(line_data)
-            elif num_digit_seqs == 2:
-                line_data, business_address = extract_business_double_numerical_address(line_data)
-            elif num_digit_seqs == 3:
-                line_data, business_address = extract_business_triple_numerical_address(line_data)
+            line_data, business_address = extract_business_numerical_address(line_data)
+            #if num_digit_seqs == 1:
+            #    line_data, business_address = extract_business_single_numerical_address(line_data)
+            #elif num_digit_seqs == 2:
+            #    line_data, business_address = extract_business_double_numerical_address(line_data)
+            #elif num_digit_seqs == 3:
+            #    line_data, business_address = extract_business_triple_numerical_address(line_data)
                 
             #
             entry = line_metadata + '\t' + line_data + '\t' + business_address + '\t' + \
@@ -79,64 +80,88 @@ def get_num_digit_seqs(line_data):
         num_digit_seqs = sum(i > 1 for i in diffs) + 1
     return num_digit_seqs
 
-# 
-def extract_business_double_numerical_address(line_data):
-    address = 'NA'
-    match_strs = [ ' [0-9]+TH', ' APT [0-9]+', ' R[0-9]+' ]
-    for match_str in match_strs:
-        match1 = re.search(' [0-9]+ ', line_data)
-        match2 = re.search(match_str, line_data.upper())
-        if match1 is not None and match2 is not None:
-            if match1.start() < match2.start():
-                try:
-                    bracket_idx = line_data.index('<')
-                    address = line_data[match1.start()+1:bracket_idx-1]
-                    line_data = line_data[:match1.start()+1] + '<BUSINESS ADDRESS>' + \
-                                line_data[bracket_idx:]
-                except:
-                    address = line_data[match1.start()+1:]
-                    line_data = line_data[:match1.start()+1] + '<BUSINESS ADDRESS>'
-    return line_data, address
+## 
+#def extract_business_double_numerical_address(line_data):
+#    address = 'NA'
+#    match_strs = [ ' [0-9]+TH', ' APT [0-9]+', ' R[0-9]+' ]
+#    for match_str in match_strs:
+#        match1 = re.search(' [0-9]+ ', line_data)
+#        match2 = re.search(match_str, line_data.upper())
+#        if match1 is not None and match2 is not None:
+#            if match1.start() < match2.start():
+#                try:
+#                    bracket_idx = line_data.index('<')
+#                    address = line_data[match1.start()+1:bracket_idx-1]
+#                    line_data = line_data[:match1.start()+1] + '<BUSINESS ADDRESS>' + \
+#                                line_data[bracket_idx:]
+#                except:
+#                    address = line_data[match1.start()+1:]
+#                    line_data = line_data[:match1.start()+1] + '<BUSINESS ADDRESS>'
+#    return line_data, address
 
-# 
-def extract_business_single_numerical_address(line_data):
-    match = re.search(' [0-9]+ [A-Za-z0-9 ]{2}', line_data)
+## 
+#def extract_business_single_numerical_address(line_data):
+#    match = re.search(' [0-9]+ [A-Za-z0-9 ]{2}', line_data)
+#    if match is not None:
+#        try:
+#            bracket_idx = line_data.index('<')
+#            address = line_data[match.start()+1:bracket_idx-1]
+#            line_data = line_data[:match.start()+1] + '<BUSINESS ADDRESS>' + \
+#                        line_data[bracket_idx:]
+#        except:
+#            address = line_data[match.start()+1:]
+#            line_data = line_data[:match.start()+1] + '<BUSINESS ADDRESS>'
+#    else:
+#        address = 'NA'
+#    return line_data, address
+
+## 
+#def extract_business_triple_numerical_address(line_data):
+#    address = 'NA'
+#    match = re.search(' [0-9]+ [0-9]/[0-9]', line_data)
+#    if match is not None:
+#        try:
+#            bracket_idx = line_data.index('<')
+#            address = line_data[match.start()+1:bracket_idx-1]
+#            line_data = line_data[:match.start()+1] + '<BUSINESS ADDRESS>' + \
+#                        line_data[bracket_idx:]
+#        except:
+#            address = line_data[match.start()+1:]
+#            line_data = line_data[:match.start()+1] + '<BUSINESS ADDRESS>'
+#    match_strs = [ ' [0-9]+TH ' ]
+#    for match_str in match_strs:
+#        match1 = re.search(' [0-9]+ ', line_data)
+#        match2 = re.search(match_str, line_data.upper())
+#        match3 = re.search(' R[0-9]+', line_data)
+#        if match1 is not None and match2 is not None and match3 is not None:
+#            if match1.start() < match2.start() and match2.start() < match3.start():
+#                try:
+#                    bracket_idx = line_data.index('<')
+#                    address = line_data[match1.start()+1:bracket_idx-1]
+#                    line_data = line_data[:match1.start()+1] + '<BUSINESS ADDRESS>' + \
+#                                line_data[bracket_idx:]
+#                except:
+#                    address = line_data[match1.start()+1:]
+#                    line_data = line_data[:match1.start()+1] + '<BUSINESS ADDRESS>'
+#    return line_data, address
+
+#
+def extract_business_numerical_address(line_data):
+    address = 'NA'
+    match = re.search(' [0-9]+ ', line_data)
     if match is not None:
         try:
             bracket_idx = line_data.index('<')
             address = line_data[match.start()+1:bracket_idx-1]
             line_data = line_data[:match.start()+1] + '<BUSINESS ADDRESS>' + \
-                        line_data[bracket_idx:]
+                                  line_data[bracket_idx:]
         except:
             address = line_data[match.start()+1:]
             line_data = line_data[:match.start()+1] + '<BUSINESS ADDRESS>'
-    else:
-        address = 'NA'
-    return line_data, address
-
-# 
-def extract_business_triple_numerical_address(line_data):
-    address = 'NA'
-    match_strs = [ ' [0-9]+TH ' ]
-    for match_str in match_strs:
-        match1 = re.search(' [0-9]+ ', line_data)
-        match2 = re.search(match_str, line_data.upper())
-        match3 = re.search(' R[0-9]+', line_data)
-        if match1 is not None and match2 is not None and match3 is not None:
-            if match1.start() < match2.start() and match2.start() < match3.start():
-                try:
-                    bracket_idx = line_data.index('<')
-                    address = line_data[match1.start()+1:bracket_idx-1]
-                    line_data = line_data[:match1.start()+1] + '<BUSINESS ADDRESS>' + \
-                                line_data[bracket_idx:]
-                except:
-                    address = line_data[match1.start()+1:]
-                    line_data = line_data[:match1.start()+1] + '<BUSINESS ADDRESS>'
     return line_data, address
     
 # 
 def extract_residential_nonnumerical_address(line_data, residence_type):
-    line_data = line_data
     address = 'NA'
     if residence_type == 'H':
         match = re.search(' h [A-Za-z]', line_data)
@@ -164,9 +189,9 @@ def extract_residential_nonnumerical_address(line_data, residence_type):
 def extract_residential_numerical_address(line_data, residence_type):
     address = 'NA'
     if residence_type == 'H':
-        match = re.search(' h[0-9]+ [A-Za-z0-9 ]{2}', line_data)
+        match = re.search(' h[0-9]', line_data)
     elif residence_type == 'R':
-        match = re.search(' r[0-9]+ [A-Za-z0-9 ]{2}', line_data)
+        match = re.search(' r[0-9]', line_data)
     else:
         print('Bad residence type.')
     if match is not None:
