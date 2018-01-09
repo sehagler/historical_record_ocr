@@ -9,7 +9,7 @@ from file_writer import file_writer
 
 #
 def hr_text_corrector4(sect_dir, file_idx, pdf_name, xlsx_dir, xlsx_first_name_abbr, 
-                       xlsx_general_abbr, xlsx_occupation_abbr):
+                       xlsx_general_abbr, xlsx_occupation_abbr, xlsx_business_abbr):
     
     #
     directory_dir = sect_dir
@@ -20,17 +20,6 @@ def hr_text_corrector4(sect_dir, file_idx, pdf_name, xlsx_dir, xlsx_first_name_a
                            str(file_idx) + '.txt'
     directory_txt_outfile = directory_txt_dir + pdf_name[:len(pdf_name)-4] + \
                             str(file_idx+1) + '.txt'
-    
-    #
-    xlsx_file = xlsx_dir + xlsx_first_name_abbr
-    first_name_abbr_dict_both_2 = abbr_dict(False, 2, xlsx_file)
-    first_name_abbr_dict_upper_2 = abbr_dict(True, 2, xlsx_file)
-    xlsx_file = xlsx_dir + xlsx_general_abbr
-    general_abbr_dict_both_2 = abbr_dict(False, 2, xlsx_file)
-    general_abbr_dict_upper_2 = abbr_dict(True, 2, xlsx_file)
-    xlsx_file = xlsx_dir + xlsx_occupation_abbr
-    occupation_abbr_dict_both_2 = abbr_dict_occupations(False, 2, xlsx_file)
-    occupation_abbr_dict_upper_2 = abbr_dict_occupations(True, 2, xlsx_file)
     
     #
     xlsx_file = xlsx_dir + xlsx_general_abbr
@@ -54,9 +43,6 @@ def hr_text_corrector4(sect_dir, file_idx, pdf_name, xlsx_dir, xlsx_first_name_a
             residence_type = line[idxs[6]+1:idxs[7]].upper()
             residential_address = line[idxs[7]+1:idxs[8]].upper()
             telephone_number = line[idxs[8]+1:].upper()
-            
-            line_data = correct_line_data(first_name_abbr_dict_upper_2, general_abbr_dict_upper_2, 
-                                          occupation_abbr_dict_upper_2, line_data)
 
             #
             business_address = correct_address(general_abbr_dict_upper_1, business_address)
@@ -77,15 +63,6 @@ def correct_address(general_abbr_dict, address):
     address = dict_correction(general_abbr_dict, address)
     address = address[1:len(address)-1]
     return address
-
-#
-def correct_line_data(first_name_abbr_dict, general_abbr_dict, occupation_abbr_dict, line_data):
-    line_data = ' ' + line_data + ' '
-    line_data = dict_correction(first_name_abbr_dict, line_data)
-    line_data = dict_correction(general_abbr_dict, line_data)
-    line_data = dict_correction(occupation_abbr_dict, line_data)
-    line_data = line_data[1:len(line_data)-1]
-    return line_data
 
 #
 def resolve_dittos(business_address, residential_address):
