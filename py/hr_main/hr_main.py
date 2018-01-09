@@ -7,6 +7,7 @@ sys.path.insert(0, 'py/hr_reader')
 sys.path.insert(0, 'py/hr_text_builder')
 sys.path.insert(0, 'py/hr_text_corrector')
 sys.path.insert(0, 'py/hr_text_segmenter')
+sys.path.insert(0, 'xlsx')
 from hr_evaluation import hr_evaluation
 from hr_reader import hr_reader
 from hr_text_builder import hr_text_builder
@@ -19,12 +20,18 @@ from hr_text_segmenter2 import hr_text_segmenter2
 
 #
 def hr_main(api_key,  pdf_automated_segmentation_flg, pdf_city, pdf_year, dpi_flg, num_cols, 
-            pdf_dir, pdf_name, pdf_pages, xlsx_dir, xlsx_first_name_abbr, xlsx_general_abbr,
-            xlsx_occupation_abbr, workspace):
+            pdf_dir, pdf_name, pdf_pages, workspace):
     
     #
     ditto_correction_flg = True
     sect_dir = workspace + 'SECTION2/'
+    
+    #
+    xlsx_dir = 'xlsx/'
+    xlsx_business_abbr = 'business_abbreviations.xlsx'
+    xlsx_first_name_abbr = 'first_name_abbreviations.xlsx'
+    xlsx_general_abbr = 'general_abbreviations.xlsx'
+    xlsx_occupation_abbr = 'occupation_abbreviations.xlsx'
     
     #
     pdf_segment_map_list = hr_reader(api_key, pdf_automated_segmentation_flg,
@@ -45,8 +52,8 @@ def hr_main(api_key,  pdf_automated_segmentation_flg, pdf_city, pdf_year, dpi_fl
     hr_text_corrector2(sect_dir, 1, pdf_name, global_excluded_surnames_list)
     hr_text_segmenter1(sect_dir, 2, pdf_name)
     hr_text_corrector3(sect_dir, 3, pdf_name, xlsx_dir, xlsx_first_name_abbr, xlsx_general_abbr,
-                       xlsx_occupation_abbr)
+                       xlsx_occupation_abbr, xlsx_business_abbr)
     hr_text_corrector4(sect_dir, 4, pdf_name, xlsx_dir, xlsx_first_name_abbr, xlsx_general_abbr,
-                       xlsx_occupation_abbr)
+                       xlsx_occupation_abbr, xlsx_business_abbr)
     hr_text_segmenter2(sect_dir, 5, pdf_name, xlsx_dir, xlsx_occupation_abbr)
     hr_evaluation(sect_dir, 6, pdf_name)
