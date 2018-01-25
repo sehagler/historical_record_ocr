@@ -20,7 +20,6 @@ def hr_text_segmenter1(sect_dir, file_idx, pdf_name):
     directory_txt_outfile = directory_txt_dir + pdf_name[:len(pdf_name)-4] + \
                             str(file_idx+1) + '.txt'
     
-    
     #
     fl_wrtr = file_writer(directory_txt_outfile)
     
@@ -150,14 +149,16 @@ def extract_business_numerical_address(line_data):
     address = 'NA'
     match = re.search(' [0-9]+ ', line_data)
     if match is not None:
-        try:
-            bracket_idx = line_data.index('<')
-            address = line_data[match.start()+1:bracket_idx-1]
-            line_data = line_data[:match.start()+1] + '<BUSINESS ADDRESS>' + \
-                                  line_data[bracket_idx:]
-        except:
-            address = line_data[match.start()+1:]
-            line_data = line_data[:match.start()+1] + '<BUSINESS ADDRESS>'
+        if line_data[match.start():match.start()+3] != ' 1 ':
+            match_start = match.start()
+            try:
+                bracket_idx = line_data.index('<')
+                address = line_data[match_start+1:bracket_idx-1]
+                line_data = line_data[:match_start+1] + '<BUSINESS ADDRESS>' + \
+                                      line_data[bracket_idx:]
+            except:
+                address = line_data[match_start+1:]
+                line_data = line_data[:match_start+1] + '<BUSINESS ADDRESS>'
     return line_data, address
     
 # 
@@ -195,14 +196,15 @@ def extract_residential_numerical_address(line_data, residence_type):
     else:
         print('Bad residence type.')
     if match is not None:
+        match_start = match.start()
         try:
             bracket_idx = line_data.index('<')
-            address = line_data[match.start()+2:bracket_idx-1]
-            line_data = line_data[:match.start()+1] + '<RESIDENCE TYPE><RESIDENTIAL ADDRESS>' + \
+            address = line_data[match_start+2:bracket_idx-1]
+            line_data = line_data[:match_start+1] + '<RESIDENCE TYPE><RESIDENTIAL ADDRESS>' + \
                         line_data[bracket_idx:]
         except:
-            address = line_data[match.start()+2:]
-            line_data = line_data[:match.start()+1] + '<RESIDENCE TYPE><RESIDENTIAL ADDRESS>'
+            address = line_data[match_start+2:]
+            line_data = line_data[:match_start+1] + '<RESIDENCE TYPE><RESIDENTIAL ADDRESS>'
     return line_data, address
 
 # extract telephone number from entry
