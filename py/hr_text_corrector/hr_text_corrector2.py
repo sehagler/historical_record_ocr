@@ -56,6 +56,15 @@ def hr_text_corrector2(sect_dir, file_idx, pdf_name, global_excluded_surnames_li
     write_to_file(fl_wrtr, metadata, text_data)
 
 #
+def line_data_is_good(line_data):
+    is_good_flg = True
+    if len(line_data) == 0:
+        is_good_flg = False
+    if line_data == ' ':
+        is_good_flg = False
+    return is_good_flg
+
+#
 def write_to_file(fl_wrtr, metadata, text_data):
     text_data = text_data[1:len(text_data)-10]
     itr = re.finditer(r' <NEWLINE> ', text_data)
@@ -70,10 +79,10 @@ def write_to_file(fl_wrtr, metadata, text_data):
         line_metadata = metadata[i]
         if i == 0:
             line_data = text_data[idxs[i]:idxs[i+1]]
-            if len(line_data) > 0:
+            if line_data_is_good(line_data):
                 text_data_out.append(line_metadata + '\t' + line_data + '\n')
         else:
             line_data = text_data[idxs[i]+11:idxs[i+1]]
-            if len(line_data) > 0:
+            if line_data_is_good(line_data):
                 text_data_out.append(line_metadata + '\t' + line_data + '\n')
     fl_wrtr.run(text_data_out)

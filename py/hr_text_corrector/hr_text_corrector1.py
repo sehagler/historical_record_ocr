@@ -6,12 +6,14 @@ import sys
 
 # Local Imports
 sys.path.insert(0, 'py/hr_tools')
-from abbr_dict import abbr_dict, abbr_dict_occupations, dict_correction
+from abbr_dict import dict_correction
 from file_writer import file_writer
 
 #
-def hr_text_corrector1(sect_dir, file_idx, pdf_name, xlsx_dir, xlsx_first_name_abbr,
-                       xlsx_general_abbr, xlsx_occupation_abbr):
+def hr_text_corrector1(columns_per_iteration, sect_dir, file_idx, pdf_name, 
+                       business_abbr_dict_both_2, first_name_abbr_dict_both_2, 
+                       general_abbr_dict_both_2, occupation_abbr_dict_both_2, 
+                       special_abbr_dict_both_2, occupation_key_list):
     
     #
     directory_dir = sect_dir
@@ -22,14 +24,6 @@ def hr_text_corrector1(sect_dir, file_idx, pdf_name, xlsx_dir, xlsx_first_name_a
                            str(file_idx) + '.txt'
     directory_txt_outfile = directory_txt_dir + pdf_name[:len(pdf_name)-4] + \
                             str(file_idx+1) + '.txt'
-        
-    #
-    xlsx_file = xlsx_dir + xlsx_first_name_abbr
-    first_name_abbr_dict_both_2 = abbr_dict(False, 2, xlsx_file)
-    xlsx_file = xlsx_dir + xlsx_general_abbr
-    general_abbr_dict_both_2 = abbr_dict(False, 2, xlsx_file)
-    xlsx_file = xlsx_dir + xlsx_occupation_abbr
-    occupation_abbr_dict_both_2 = abbr_dict_occupations(False, 2, xlsx_file)
 
     #
     words_lower = [word.lower() for word in words.words()]
@@ -37,11 +31,17 @@ def hr_text_corrector1(sect_dir, file_idx, pdf_name, xlsx_dir, xlsx_first_name_a
     #
     fl_wrtr = file_writer(directory_txt_outfile)
     
-    #
-    current_column = 0
+    #     
     global_excluded_surnames_list = []
-    text_data = []
     with open(directory_txt_infile, 'r') as f:
+        
+        #
+        column_ctr = 1
+        current_column = 1
+        metadata = []
+        text_data = []
+        
+        #
         for line in f:
             
             #
@@ -52,11 +52,19 @@ def hr_text_corrector1(sect_dir, file_idx, pdf_name, xlsx_dir, xlsx_first_name_a
             line_metadata = line[:idxs[-1]]
             line_data = line[idx+1:len(line)-1]
             
-            if column == 1 and current_column != 1:
+            #
+            if column != current_column:
+                current_column = column
+                column_ctr += 1
+            
+            #
+            if column_ctr > columns_per_iteration:
+                
+                #
                 if len(text_data) > 0:
                     excluded_surnames_list = get_excluded_surnames_list(text_data)
                     global_excluded_surnames_list.extend(excluded_surnames_list)
-                    entries = parse_column(excluded_surnames_list, words_lower, 
+                    entries = parse_column(excluded_surnames_list, words_lower,
                                            text_data, metadata, fl_wrtr)
                     metadata = []
                     text_data = []
@@ -74,20 +82,26 @@ def hr_text_corrector1(sect_dir, file_idx, pdf_name, xlsx_dir, xlsx_first_name_a
                         else:
                             entry_data = ' ' + entry_data + ' <NEWLINE>'
                         text_data.append(entry_data)
-                    text_data = correct_text_data(first_name_abbr_dict_both_2, 
+                    text_data = correct_text_data(business_abbr_dict_both_2, 
+                                                  first_name_abbr_dict_both_2,
                                                   general_abbr_dict_both_2,
-                                                  occupation_abbr_dict_both_2, 
-                                                  words_lower, text_data)
+                                                  occupation_abbr_dict_both_2,
+                                                  special_abbr_dict_both_2,
+                                                  words_lower, occupation_key_list, text_data)
                     write_to_file(fl_wrtr, metadata, text_data)
-                        
-                current_column = column
+                
+                #
+                column_ctr = 1
                 metadata = []
-                metadata.append(line_metadata)
                 text_data = []
+                
+                #
+                metadata.append(line_metadata)
                 text_data.append(line_data)
                 
             else:
-                current_column = column
+                
+                #
                 metadata.append(line_metadata)
                 text_data.append(line_data)
                 
@@ -95,7 +109,7 @@ def hr_text_corrector1(sect_dir, file_idx, pdf_name, xlsx_dir, xlsx_first_name_a
         if len(text_data) > 0:
             excluded_surnames_list = get_excluded_surnames_list(text_data)
             global_excluded_surnames_list.extend(excluded_surnames_list)
-            entries = parse_column(excluded_surnames_list, words_lower, 
+            entries = parse_column(excluded_surnames_list, words_lower,
                                    text_data, metadata, fl_wrtr)
             metadata = []
             text_data = []
@@ -113,10 +127,12 @@ def hr_text_corrector1(sect_dir, file_idx, pdf_name, xlsx_dir, xlsx_first_name_a
                 else:
                     entry_data = ' ' + entry_data + ' <NEWLINE>'
                 text_data.append(entry_data)
-            text_data = correct_text_data(first_name_abbr_dict_both_2, 
+            text_data = correct_text_data(business_abbr_dict_both_2, 
+                                          first_name_abbr_dict_both_2,
                                           general_abbr_dict_both_2,
-                                          occupation_abbr_dict_both_2, 
-                                          words_lower, text_data)
+                                          occupation_abbr_dict_both_2,
+                                          special_abbr_dict_both_2,
+                                          words_lower, occupation_key_list, text_data)
             write_to_file(fl_wrtr, metadata, text_data)
             
     return global_excluded_surnames_list
@@ -125,7 +141,6 @@ def hr_text_corrector1(sect_dir, file_idx, pdf_name, xlsx_dir, xlsx_first_name_a
 def add_spaces(text_data):
     text_data = re.sub('\(', '( ', text_data)
     text_data = re.sub('\)', ' )', text_data)
-    text_data = re.sub('-', ' - ', text_data)
     return text_data
     
 #
@@ -219,7 +234,7 @@ def correct_missing_space(words_lower, text_data):
     return text_data
 
 #
-def correct_split_words(words_lower, text_data):
+def correct_split_words(case_flg, words_lower, occupation_key_list, text_data):
     itr = re.finditer(r' ', text_data)
     idxs = [idx.start() for idx in itr]
     idx_list = []
@@ -232,8 +247,12 @@ def correct_split_words(words_lower, text_data):
                 text_str = text_str1 + text_str2
                 sub_match = re.search('[0-9]+', text_str)
                 if sub_match is None and len(text_str) >= 5:
-                    if text_str.lower() in words_lower:
-                        idx_list.append(idxs[i+1])
+                    if case_flg == 0:
+                        if ' ' + text_str.lower() + ' ' in occupation_key_list:
+                            idx_list.append(idxs[i+1])
+                    elif case_flg == 1:
+                        if text_str.lower() in words_lower:
+                            idx_list.append(idxs[i+1])
     idx_list = sorted(idx_list, reverse=True)
     for i in range(len(idx_list)):
         text_data = text_data[:idx_list[i]] + text_data[idx_list[i]+1:]
@@ -242,6 +261,8 @@ def correct_split_words(words_lower, text_data):
 #
 def correct_spurious_punctuation(text_data):
     text_data = text_data.replace('.', ' ')
+    text_data = text_data.replace('-(', ' (')
+    text_data = text_data.replace(')-', ') ')
     itr = re.finditer(r'\?', text_data)
     idxs = [idx.start() for idx in itr]
     for i in range(len(idxs)):
@@ -275,19 +296,22 @@ def correct_spurious_spaces(text_data):
     return text_data
     
 #
-def correct_text_data(first_name_abbr_dict, general_abbr_dict, occupation_abbr_dict, 
-                      words_lower, text_data):
+def correct_text_data(business_abbr_dict, first_name_abbr_dict, general_abbr_dict,
+                      occupation_abbr_dict, special_abbr_dict, words_lower, 
+                      occupation_key_list, text_data):
     text_data = ''.join(text_data)
     text_data = correct_line_continuation(text_data)
     text_data = remove_spurious_marks(text_data)
     text_data = correct_spurious_spaces(text_data)
     text_data = add_spaces(text_data)
     text_data = correct_spurious_punctuation(text_data)
-    #text_data = correct_missing_space(words_lower, text_data)
-    text_data = dict_correction(first_name_abbr_dict, text_data)
-    text_data = dict_correction(general_abbr_dict, text_data)
-    text_data = dict_correction(occupation_abbr_dict, text_data)
-    text_data = correct_split_words(words_lower, text_data)
+    text_data = correct_split_words(0, words_lower, occupation_key_list, text_data)
+    text_data = dict_correction(False, False, first_name_abbr_dict, text_data)
+    text_data = dict_correction(True, True, occupation_abbr_dict, text_data)
+    text_data = dict_correction(False, False, business_abbr_dict, text_data)
+    text_data = dict_correction(False, False, special_abbr_dict, text_data)
+    text_data = dict_correction(False, False, general_abbr_dict, text_data)
+    text_data = correct_split_words(1, words_lower, occupation_key_list, text_data)
     text_data = remove_spaces(text_data)
     text_data = correct_for_empty_entries(text_data)
     return text_data   
@@ -363,21 +387,19 @@ def parse_column(excluded_surnames_list, words_lower, text_data, metadata, fl_wr
             if len(line_data) > 0:
                 entry = line_metadata + '\t' + line_data + '\n'
                 entries.append(entry)
-    #fl_wrtr.run(entries)
     return entries
     
 #
 def remove_spaces(text_data):
     text_data = re.sub('\( ', '(', text_data)
     text_data = re.sub(' \)', ')', text_data)
-    text_data = re.sub(' - ', '-', text_data)
     return text_data
 
 #
 def remove_spurious_marks(text_data):
-    text_data = re.sub(' - ', '  ', text_data)
     text_data = re.sub(' , ', '  ', text_data)
     text_data = re.sub(' \. ', '  ', text_data)
+    text_data = re.sub('_', ' ', text_data)
     return text_data
 
 #

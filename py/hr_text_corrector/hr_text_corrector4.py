@@ -8,8 +8,7 @@ from abbr_dict import abbr_dict, abbr_dict_occupations, dict_correction
 from file_writer import file_writer
 
 #
-def hr_text_corrector4(sect_dir, file_idx, pdf_name, xlsx_dir, xlsx_first_name_abbr, 
-                       xlsx_general_abbr, xlsx_occupation_abbr, xlsx_business_abbr):
+def hr_text_corrector4(sect_dir, file_idx, pdf_name, xlsx_dir, xlsx_general_abbr):
     
     #
     directory_dir = sect_dir
@@ -60,7 +59,7 @@ def hr_text_corrector4(sect_dir, file_idx, pdf_name, xlsx_dir, xlsx_first_name_a
 #
 def correct_address(general_abbr_dict, address):
     address = ' ' + address + ' '
-    address = dict_correction(general_abbr_dict, address)
+    address = dict_correction(False, False, general_abbr_dict, address)
     address = address[1:len(address)-1]
     return address
 

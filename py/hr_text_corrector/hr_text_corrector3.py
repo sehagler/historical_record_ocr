@@ -8,8 +8,8 @@ from abbr_dict import abbr_dict, abbr_dict_occupations, dict_correction
 from file_writer import file_writer
 
 #
-def hr_text_corrector3(sect_dir, file_idx, pdf_name, xlsx_dir, xlsx_first_name_abbr,
-                       xlsx_general_abbr, xlsx_occupation_abbr, xlsx_business_abbr):
+def hr_text_corrector3(sect_dir, file_idx, pdf_name, xlsx_dir, xlsx_business_abbr, xlsx_first_name_abbr,
+                       xlsx_general_abbr, xlsx_special_abbr):
     
     #
     directory_dir = sect_dir
@@ -22,19 +22,14 @@ def hr_text_corrector3(sect_dir, file_idx, pdf_name, xlsx_dir, xlsx_first_name_a
                             str(file_idx+1) + '.txt'
     
     #
+    xlsx_file = xlsx_dir + xlsx_business_abbr
+    business_abbr_dict_upper_2 = abbr_dict(True, 2, xlsx_file)
     xlsx_file = xlsx_dir + xlsx_first_name_abbr
-    first_name_abbr_dict_both_2 = abbr_dict(False, 2, xlsx_file)
     first_name_abbr_dict_upper_2 = abbr_dict(True, 2, xlsx_file)
     xlsx_file = xlsx_dir + xlsx_general_abbr
-    general_abbr_dict_both_2 = abbr_dict(False, 2, xlsx_file)
     general_abbr_dict_upper_2 = abbr_dict(True, 2, xlsx_file)
-    xlsx_file = xlsx_dir + xlsx_occupation_abbr
-    occupation_abbr_dict_both_2 = abbr_dict_occupations(False, 2, xlsx_file)
-    occupation_abbr_dict_upper_2 = abbr_dict_occupations(True, 2, xlsx_file)
-    xlsx_file = xlsx_dir + xlsx_business_abbr
-    business_abbr_dict_both_2 = abbr_dict(False, 2, xlsx_file)
-    business_abbr_dict_upper_2 = abbr_dict(True, 2, xlsx_file)
-    
+    xlsx_file = xlsx_dir + xlsx_special_abbr
+    special_abbr_dict_upper_2 = abbr_dict(True, 2, xlsx_file)
     
     #
     fl_wrtr = file_writer(directory_txt_outfile)
@@ -61,25 +56,21 @@ def hr_text_corrector3(sect_dir, file_idx, pdf_name, xlsx_dir, xlsx_first_name_a
                 text_data.append(' ' + line_data + ' <NEWLINE>')
             else:
                 if len(text_data) > 0:
-                    text_data = correct_text_data(False, first_name_abbr_dict_both_2,
-                                                  general_abbr_dict_both_2,
-                                                  occupation_abbr_dict_both_2, 
-                                                  business_abbr_dict_both_2, text_data)
-                    text_data = correct_text_data(True, first_name_abbr_dict_upper_2,
-                                                  general_abbr_dict_upper_2,
-                                                  occupation_abbr_dict_upper_2, 
-                                                  business_abbr_dict_upper_2, text_data)
+                    #text_data = correct_text_data(business_abbr_dict_upper_2, 
+                    #                              first_name_abbr_dict_upper_2,
+                    #                              general_abbr_dict_upper_2,
+                    #                              special_abbr_dict_upper_2, text_data)
+                    text_data = ''.join(text_data)
                     write_to_file(fl_wrtr, metadata, text_data)
                 current_column = column
                 metadata = []
-                metadata.append(line_metadata)
                 text_data = []
+                metadata.append(line_metadata)
                 text_data.append(' ' + line_data + ' <NEWLINE>')
-                
-    text_data = correct_text_data(False, first_name_abbr_dict_upper_2, general_abbr_dict_upper_2,
-                                  occupation_abbr_dict_upper_2, business_abbr_dict_upper_2, text_data)         
-    text_data = correct_text_data(True, first_name_abbr_dict_upper_2, general_abbr_dict_upper_2,
-                                  occupation_abbr_dict_upper_2, business_abbr_dict_upper_2, text_data)
+                       
+    #text_data = correct_text_data(business_abbr_dict_upper_2, first_name_abbr_dict_upper_2, 
+    #                              general_abbr_dict_upper_2, special_abbr_dict_upper_2, text_data)
+    text_data = ''.join(text_data)
     write_to_file(fl_wrtr, metadata, text_data)
    
 #
@@ -91,16 +82,15 @@ def add_spaces(text_data):
     return text_data
     
 #
-def correct_text_data(upper_flg, first_name_abbr_dict, general_abbr_dict, 
-                      occupation_abbr_dict, business_abbr_dict, text_data):
-    if upper_flg:
-        text_data = text_data.upper()
+def correct_text_data(business_abbr_dict, first_name_abbr_dict, general_abbr_dict, 
+                      special_abbr_dict, text_data):
     text_data = ''.join(text_data)
+    text_data = text_data.upper()
     text_data = add_spaces(text_data)
-    text_data = dict_correction(first_name_abbr_dict, text_data)
-    text_data = dict_correction(general_abbr_dict, text_data)
-    text_data = dict_correction(business_abbr_dict, text_data)
-    text_data = dict_correction(occupation_abbr_dict, text_data)
+    text_data = dict_correction(False, False, first_name_abbr_dict, text_data)
+    text_data = dict_correction(False, False, business_abbr_dict, text_data)
+    text_data = dict_correction(False, False, special_abbr_dict, text_data)
+    text_data = dict_correction(False, False, general_abbr_dict, text_data)
     text_data = remove_spaces(text_data)
     return text_data
 
