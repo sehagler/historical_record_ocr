@@ -8,7 +8,8 @@ from abbr_dict import abbr_dict, abbr_dict_occupations, dict_correction
 from file_writer import file_writer
 
 #
-def hr_text_corrector4(sect_dir, file_idx, pdf_name, xlsx_dir, xlsx_general_abbr):
+def hr_text_corrector4(sect_dir, file_idx, pdf_name, first_name_abbr_list_dict_upper_2, 
+                       general_abbr_dict_upper_2, special_abbr_dict_upper_2):
     
     #
     directory_dir = sect_dir
@@ -21,61 +22,87 @@ def hr_text_corrector4(sect_dir, file_idx, pdf_name, xlsx_dir, xlsx_general_abbr
                             str(file_idx+1) + '.txt'
     
     #
-    xlsx_file = xlsx_dir + xlsx_general_abbr
-    general_abbr_dict_upper_1 = abbr_dict(True, 1, xlsx_file)
-    
-    #
     fl_wrtr = file_writer(directory_txt_outfile)
     
     #
     current_column = 0
-    current_surname = []
+    text_data = []
+    line_ctr = 0
     with open(directory_txt_infile, 'r') as f:
         for line in f:
+            
+            line = line.upper()
+            
+            line_ctr += 1
             
             #
             itr = re.finditer(r'\t', line)
             idxs = [idx.start() for idx in itr]
-            line_metadata = line[:idxs[4]].upper()
-            line_data = line[idxs[4]+1:idxs[5]].upper()
-            business_address = line[idxs[5]+1:idxs[6]].upper()
-            residence_type = line[idxs[6]+1:idxs[7]].upper()
-            residential_address = line[idxs[7]+1:idxs[8]].upper()
-            telephone_number = line[idxs[8]+1:].upper()
-
-            #
-            business_address = correct_address(general_abbr_dict_upper_1, business_address)
-            residential_address = correct_address(general_abbr_dict_upper_1, residential_address)
+            idx = idxs[4]
+            column = line[idxs[3]+1:idxs[4]]
+            line_metadata = line[:idxs[4]]
+            line_data = line[idx+1:len(line)-1]
             
-            #
-            residential_address = resolve_dittos(business_address, residential_address)
-                   
-            #
-            entry = line_metadata + '\t' + line_data + '\t' + business_address + '\t' + \
-                    residence_type + '\t' + residential_address + '\t' + telephone_number
-            entries = [ entry ]           
-            fl_wrtr.run(entries)
-            
+            if column == current_column:
+                metadata.append(line_metadata)
+                text_data.append(' ' + line_data + ' <NEWLINE>')
+            else:
+                if len(text_data) > 0:
+                    text_data = correct_text_data(first_name_abbr_list_dict_upper_2,
+                                                  general_abbr_dict_upper_2,
+                                                  special_abbr_dict_upper_2, text_data)
+                    text_data = ''.join(text_data)
+                    write_to_file(fl_wrtr, metadata, text_data)
+                current_column = column
+                metadata = []
+                text_data = []
+                metadata.append(line_metadata)
+                text_data.append(' ' + line_data + ' <NEWLINE>')
+                       
+    text_data = correct_text_data(first_name_abbr_list_dict_upper_2, general_abbr_dict_upper_2,
+                                  special_abbr_dict_upper_2, text_data)
+    text_data = ''.join(text_data)
+    write_to_file(fl_wrtr, metadata, text_data)
+   
 #
-def correct_address(general_abbr_dict, address):
-    address = ' ' + address + ' '
-    address = dict_correction(False, False, general_abbr_dict, address)
-    address = address[1:len(address)-1]
-    return address
+def add_spaces(text_data):
+    text_data = re.sub('\(', '( ', text_data)
+    text_data = re.sub('\)', ' )', text_data)
+    text_data = re.sub('\\t', ' \\t ', text_data)
+    return text_data
+    
+#
+def correct_text_data(first_name_abbr_list_dict_upper_2, general_abbr_dict_upper_2,
+                      special_abbr_dict_upper_2, text_data):
+    text_data = ''.join(text_data)
+    text_data = text_data.upper()
+    text_data = add_spaces(text_data)
+    text_data = dict_correction(False, False, first_name_abbr_list_dict_upper_2, text_data)
+    text_data = dict_correction(False, True, general_abbr_dict_upper_2, text_data)
+    text_data = dict_correction(False, False, special_abbr_dict_upper_2, text_data)
+    text_data = remove_spaces(text_data)
+    return text_data
 
 #
-def resolve_dittos(business_address, residential_address):
-    match = re.search(r'DITTO', residential_address)
-    if match is not None:
-        address_str = 'DITTO'
-        if residential_address == 'DITTO':
-            if business_address != 'NA':
-                address_str = business_address
+def remove_spaces(text_data):
+    text_data = re.sub('\( ', '(', text_data)
+    text_data = re.sub(' \)', ')', text_data)
+    text_data = re.sub(' \\t ', '\\t', text_data)
+    return text_data
+
+#
+def write_to_file(fl_wrtr, metadata, text_data):
+    text_data = text_data[1:len(text_data)-10]
+    itr = re.finditer(r' <NEWLINE> ', text_data)
+    idxs = [idx.start() for idx in itr]
+    idxs = idxs + [0]
+    idxs = idxs + [len(text_data)]
+    idxs = sorted(idxs)
+    text_data_out = []
+    for i in range(len(metadata)):
+        line_metadata = metadata[i]
+        if i == 0:
+            text_data_out.append(line_metadata + '\t' + text_data[idxs[i]:idxs[i+1]] + '\n')
         else:
-            sub_match = re.search(r'[0-9]+ DITTO', residential_address)
-            if sub_match is not None:
-                sub_sub_match = re.search(r'[A-Za-z]+', business_address)
-                if sub_sub_match is not None:
-                    address_str = business_address[sub_sub_match.start():]
-        residential_address = re.sub('DITTO', address_str, residential_address)    
-    return residential_address
+            text_data_out.append(line_metadata + '\t' + text_data[idxs[i]+11:idxs[i+1]] + '\n')
+    fl_wrtr.run(text_data_out)

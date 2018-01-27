@@ -11,9 +11,9 @@ from file_writer import file_writer
 
 #
 def hr_text_corrector1(columns_per_iteration, sect_dir, file_idx, pdf_name, 
-                       business_abbr_dict_both_2, first_name_abbr_dict_both_2, 
-                       general_abbr_dict_both_2, occupation_abbr_dict_both_2, 
-                       special_abbr_dict_both_2, occupation_key_list):
+                       generic_business_list_dict_both_2, hyphenated_generic_occupation_dict_both_2,
+                       internal_ref_abbr_list_dict_both_2, unhyphenated_generic_occupation_dict_both_2, 
+                       occupation_key_list):
     
     #
     directory_dir = sect_dir
@@ -82,11 +82,10 @@ def hr_text_corrector1(columns_per_iteration, sect_dir, file_idx, pdf_name,
                         else:
                             entry_data = ' ' + entry_data + ' <NEWLINE>'
                         text_data.append(entry_data)
-                    text_data = correct_text_data(business_abbr_dict_both_2, 
-                                                  first_name_abbr_dict_both_2,
-                                                  general_abbr_dict_both_2,
-                                                  occupation_abbr_dict_both_2,
-                                                  special_abbr_dict_both_2,
+                    text_data = correct_text_data(generic_business_list_dict_both_2,
+                                                  hyphenated_generic_occupation_dict_both_2,
+                                                  internal_ref_abbr_list_dict_both_2,
+                                                  unhyphenated_generic_occupation_dict_both_2,
                                                   words_lower, occupation_key_list, text_data)
                     write_to_file(fl_wrtr, metadata, text_data)
                 
@@ -127,11 +126,10 @@ def hr_text_corrector1(columns_per_iteration, sect_dir, file_idx, pdf_name,
                 else:
                     entry_data = ' ' + entry_data + ' <NEWLINE>'
                 text_data.append(entry_data)
-            text_data = correct_text_data(business_abbr_dict_both_2, 
-                                          first_name_abbr_dict_both_2,
-                                          general_abbr_dict_both_2,
-                                          occupation_abbr_dict_both_2,
-                                          special_abbr_dict_both_2,
+            text_data = correct_text_data(generic_business_list_dict_both_2,
+                                          hyphenated_generic_occupation_dict_both_2,
+                                          internal_ref_abbr_list_dict_both_2,
+                                          unhyphenated_generic_occupation_dict_both_2,
                                           words_lower, occupation_key_list, text_data)
             write_to_file(fl_wrtr, metadata, text_data)
             
@@ -296,9 +294,9 @@ def correct_spurious_spaces(text_data):
     return text_data
     
 #
-def correct_text_data(business_abbr_dict, first_name_abbr_dict, general_abbr_dict,
-                      occupation_abbr_dict, special_abbr_dict, words_lower, 
-                      occupation_key_list, text_data):
+def correct_text_data(generic_business_list_dict_both_2, hyphenated_generic_occupation_dict,
+                      internal_ref_abbr_list_dict_both_2, unhyphenated_generic_occupation_dict, 
+                      words_lower, occupation_key_list, text_data):
     text_data = ''.join(text_data)
     text_data = correct_line_continuation(text_data)
     text_data = remove_spurious_marks(text_data)
@@ -306,11 +304,10 @@ def correct_text_data(business_abbr_dict, first_name_abbr_dict, general_abbr_dic
     text_data = add_spaces(text_data)
     text_data = correct_spurious_punctuation(text_data)
     text_data = correct_split_words(0, words_lower, occupation_key_list, text_data)
-    text_data = dict_correction(False, False, first_name_abbr_dict, text_data)
-    text_data = dict_correction(True, True, occupation_abbr_dict, text_data)
-    text_data = dict_correction(False, False, business_abbr_dict, text_data)
-    text_data = dict_correction(False, False, special_abbr_dict, text_data)
-    text_data = dict_correction(False, False, general_abbr_dict, text_data)
+    text_data = dict_correction(True, False, hyphenated_generic_occupation_dict, text_data)
+    text_data = dict_correction(True, True, unhyphenated_generic_occupation_dict, text_data)
+    text_data = dict_correction(False, False, generic_business_list_dict_both_2, text_data)
+    text_data = dict_correction(False, False, internal_ref_abbr_list_dict_both_2, text_data)
     text_data = correct_split_words(1, words_lower, occupation_key_list, text_data)
     text_data = remove_spaces(text_data)
     text_data = correct_for_empty_entries(text_data)
