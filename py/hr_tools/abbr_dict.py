@@ -28,7 +28,8 @@ def _extend_with_errors(upper_flg, xlsx_dict, abbr_list, original_letter, error_
     for i in idxs:
         abbr_tmp = abbr
         if i == 0:
-            abbr_tmp = error_letter + abbr_tmp[1:]
+            #abbr_tmp = error_letter + abbr_tmp[1:]
+            abbr_tmp = abbr_tmp
         elif i == len(abbr):
             abbr_tmp = abbr_tmp[:-1] + error_letter
         else:
@@ -205,9 +206,11 @@ def get_value_list(xlsx_file):
     return value_list
 
 #
-def get_value_list_occupations(occupations_flg, xlsx_file1, xlsx_file2):
-    tag_dict = _generic_dict(xlsx_file2)
-    tag_key_list = list(tag_dict.keys())
+def get_value_list_occupations(occupations_flg, xlsx_file1, xlsx_file2, xlsx_file3):
+    determiner_dict = _generic_dict(xlsx_file2)
+    determiner_key_list = list(determiner_dict.keys())
+    specifier_dict = _generic_dict(xlsx_file3)
+    specifier_key_list = list(specifier_dict.keys())
     book = open_workbook(xlsx_file1)
     sheet = book.sheets()[0]
     value_list = []
@@ -216,8 +219,8 @@ def get_value_list_occupations(occupations_flg, xlsx_file1, xlsx_file2):
         rowval = rowvals[1].value
         rowval_list = []
         if rowval[-3:] == 'XYZ':
-            for tag_key in tag_key_list:
-                extended_rowval = _extended_list(rowval[:-3] + tag_dict[tag_key])
+            for specifier_key in specifier_key_list:
+                extended_rowval = _extended_list(rowval[:-3] + specifier_dict[specifier_key])
                 rowval_list = list(set(rowval_list) | set(extended_rowval))
         else:
             extended_rowval = _extended_list(rowval)
@@ -226,9 +229,8 @@ def get_value_list_occupations(occupations_flg, xlsx_file1, xlsx_file2):
             if rowval != '':
                 value_list.append(rowval)
                 if occupations_flg:
-                    value_list.append('assistant ' + rowval)
-                    value_list.append('chief ' + rowval)
-                    value_list.append('head ' + rowval)
+                    for determiner_key in determiner_key_list:
+                        value_list.append(determiner_dict[determiner_key] + ' ' + rowval)
     value_list = list(set(value_list))
     value_list.sort(key = lambda x:len(x), reverse = True)
     return value_list
