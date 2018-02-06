@@ -8,7 +8,7 @@ sys.path.insert(0, 'py/hr_tools')
 from file_writer import file_writer
 
 #
-def hr_text_segmenter1(sect_dir, file_idx, pdf_name):
+def hr_text_segmenter1(max_chars, sect_dir, file_idx, pdf_name):
     
     #
     directory_dir = sect_dir
@@ -37,29 +37,36 @@ def hr_text_segmenter1(sect_dir, file_idx, pdf_name):
             residence_type = 'NA'
             residential_address = 'NA'
             telephone_number = 'NA'
-
-            #
-            line_data, telephone_number = extract_telephone_number(line_data)
             
             #
-            residence_flg, residence_type, residence_num_address_flg = \
-                is_residence(line_data)
-            if residence_flg:
-                if not residence_num_address_flg:
-                    line_data, residential_address = \
-                        extract_residential_nonnumerical_address(line_data, residence_type)
-                if residence_num_address_flg:
-                    line_data, residential_address = \
-                        extract_residential_numerical_address(line_data, residence_type)
-                        
-            #
-            num_digit_seqs = get_num_digit_seqs(line_data)
-            line_data, business_address = extract_business_numerical_address(line_data)
+            line_data = line_data.replace('-', ' - ')
+            
+            if len(line_data) < max_chars:
+
+                #
+                line_data, telephone_number = extract_telephone_number(line_data)
+
+                #
+                residence_flg, residence_type, residence_num_address_flg = \
+                    is_residence(line_data)
+                if residence_flg:
+                    if not residence_num_address_flg:
+                        line_data, residential_address = \
+                            extract_residential_nonnumerical_address(line_data, residence_type)
+                    if residence_num_address_flg:
+                        line_data, residential_address = \
+                            extract_residential_numerical_address(line_data, residence_type)
+
+                #
+                num_digit_seqs = get_num_digit_seqs(line_data)
+                line_data, business_address = extract_business_numerical_address(line_data)
                 
             #
             entry = line_metadata + '\t' + line_data + '\t' + business_address + '\t' + \
                     residence_type + '\t' + residential_address + '\t' + \
-                    telephone_number + '\n'            
+                    telephone_number + '\n'
+            entry = entry.replace(' - ', '-')
+            entry = entry.replace('-<', ' <')
             entries = [ entry ]           
             fl_wrtr.run(entries)
             
@@ -119,9 +126,9 @@ def extract_residential_nonnumerical_address(line_data, residence_type):
 def extract_residential_numerical_address(line_data, residence_type):
     address = 'NA'
     if residence_type == 'H':
-        match = re.search(' h[0-9]', line_data)
+        match = re.search(' (h[0-9]|h [0-9])', line_data)
     elif residence_type == 'R':
-        match = re.search(' r[0-9]', line_data)
+        match = re.search(' (r[0-9]|r [0-9])', line_data)
     else:
         print('Bad residence type.')
     if match is not None:
@@ -153,10 +160,10 @@ def is_residence(line_data):
     residence_flg = False
     residence_type = 'NA'
     residence_num_address_flg = False   
-    if re.search(' h[0-9]', line_data) is not None:
+    if re.search(' (h[0-9]|h [0-9])', line_data) is not None:
         residence_flg = True
         residence_type = 'H'
-        residence_num_address_flg = True
+        residence_num_address_flg = True      
     if re.search(' h [A-Za-z]', line_data) is not None:
         residence_flg = True
         residence_type = 'H'
@@ -165,7 +172,7 @@ def is_residence(line_data):
         residence_flg = True
         residence_type = 'H'
         residence_num_address_flg = False
-    if re.search(' r[0-9]', line_data) is not None:
+    if re.search(' (r[0-9]|r [0-9])', line_data) is not None:
         residence_flg = True
         residence_type = 'R'
         residence_num_address_flg = True
