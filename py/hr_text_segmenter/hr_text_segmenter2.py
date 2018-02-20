@@ -8,18 +8,14 @@ sys.path.insert(0, 'py/hr_tools')
 from file_writer import file_writer
 
 #
-def hr_text_segmenter2(columns_per_iteration, max_chars, sect_dir, file_idx, pdf_name, 
-                       generic_business_list_values, executive_occupation_value_list,
-                       generic_occupation_value_list, title_key_list):
+def hr_text_segmenter2(columns_per_iteration, max_chars, txt_dir, file_idx, pdf_name, 
+                       business_value_list_txt, occupation_value_list_txt, 
+                       occupation_determiner_value_list, title_key_list):
     
     #
-    directory_dir = sect_dir
-    
-    #
-    directory_txt_dir = directory_dir + 'txt/'
-    directory_txt_infile = directory_txt_dir + pdf_name[:len(pdf_name)-4] + \
+    directory_txt_infile = txt_dir + pdf_name[:len(pdf_name)-4] + \
                            str(file_idx) + '.txt'
-    directory_txt_outfile = directory_txt_dir + pdf_name[:len(pdf_name)-4] + \
+    directory_txt_outfile = txt_dir + pdf_name[:len(pdf_name)-4] + \
                             str(file_idx+1) + '.txt'
         
     #
@@ -55,9 +51,9 @@ def hr_text_segmenter2(columns_per_iteration, max_chars, sect_dir, file_idx, pdf
                 
                 #
                 if len(text_data) > 0:
-                    text_data = extract_occupation_and_business(max_chars, executive_occupation_value_list,
-                                                                generic_business_list_values,
-                                                                generic_occupation_value_list, text_data)
+                    text_data = extract_occupation_and_business(max_chars, business_value_list_txt,
+                                                                occupation_value_list_txt, 
+                                                                occupation_determiner_value_list, text_data)
                     text_data = extract_single_pair_parentheses(text_data)
                     text_data = indicate_missing_spouse_or_business(text_data)
                     text_data = extract_personal_name(title_key_list, text_data)
@@ -81,9 +77,9 @@ def hr_text_segmenter2(columns_per_iteration, max_chars, sect_dir, file_idx, pdf
                 text_data.append(' ' + line_data + ' <NEWLINE>')
     
     #
-    text_data = extract_occupation_and_business(max_chars, executive_occupation_value_list,
-                                                generic_business_list_values, 
-                                                generic_occupation_value_list, text_data)
+    text_data = extract_occupation_and_business(max_chars, business_value_list_txt, 
+                                                occupation_value_list_txt, 
+                                                occupation_determiner_value_list, text_data)
     text_data = extract_single_pair_parentheses(text_data)
     text_data = indicate_missing_spouse_or_business(text_data)
     text_data = extract_personal_name(title_key_list, text_data)
@@ -92,40 +88,40 @@ def hr_text_segmenter2(columns_per_iteration, max_chars, sect_dir, file_idx, pdf
     write_to_file(fl_wrtr, metadata, text_data)
     
 #
-def extract_business(max_chars, business_list, text_data):
+def extract_business(max_chars, business_value_list_txt, text_data):
     text_data = ''.join(text_data)
     text_data = ' ' + text_data + ' '
     text_data = mark_long_entries(max_chars, text_data)
-    for i in range(len(business_list)):
-        itr0 = re.finditer(' ' + business_list[i] + ' ', text_data)
-        itr1 = re.finditer(' ' + business_list[i] + '\t', text_data)
-        idx_list0 = [ idx.start() for idx in itr0 ]
-        idx_list1 = [ idx.start() for idx in itr1 ]
-        idx_list0 = sorted(list(set(idx_list0) | set(idx_list1)))
-        for j in range(len(idx_list0)):
-            itr1 = re.finditer(' ' + business_list[i] + ' ', text_data)
-            itr2 = re.finditer(' ' + business_list[i] + '\t', text_data)
-            itr3 = re.finditer(r'<NEWLINE> ' + business_list[i], text_data)
+    with open(business_value_list_txt, 'r') as f:
+        for business in f:
+            business = business[:-1]
+            itr0 = re.finditer(' ' + business + ' ', text_data)
+            itr1 = re.finditer(' ' + business + '\t', text_data)
+            idx_list0 = [ idx.start() for idx in itr0 ]
             idx_list1 = [ idx.start() for idx in itr1 ]
-            idx_list2 = [ idx.start() for idx in itr2 ]
-            idx_list1 = sorted(list(set(idx_list1) | set(idx_list2)))
-            idx = idx_list1[j]
-            if idx == 0:
-                idx = -1
-            elif itr3 is not None:
-                for idx3 in itr3:
-                    if idx3.start() + 9 == idx:
-                        idx = -1
-            if idx != -1:
-                text_data0 = text_data[:idx]
-                text_data_tmp = text_data[idx:]
-                match = re.search(r' <NEWLINE> ', text_data_tmp)
-                text_data1 = text_data_tmp[:match.start()]
-                text_data2 = text_data_tmp[match.start():]
-                if len(text_data1) < max_chars:
+            idx_list0 = sorted(list(set(idx_list0) | set(idx_list1)))
+            for _ in range(len(idx_list0)):
+                itr1 = re.finditer(' ' + business + ' ', text_data)
+                itr2 = re.finditer(' ' + business + '\t', text_data)
+                itr3 = re.finditer(r'<NEWLINE> ' + business, text_data)
+                idx_list1 = [ idx.start() for idx in itr1 ]
+                idx_list2 = [ idx.start() for idx in itr2 ]
+                idx_list1 = sorted(list(set(idx_list1) | set(idx_list2)))
+                if len(idx_list1) >= 1:
+                    idx = idx_list1[0]
+                    text_data0 = text_data[:idx]
+                    text_data_tmp = text_data[idx:]
+                    match = re.search(r'( |!!!)<NEWLINE> ', text_data_tmp)
+                    text_data1 = text_data_tmp[:match.start()]
+                    text_data2 = text_data_tmp[match.start():]
+                    itr_test = re.finditer(r'<NEWLINE>', text_data0)
+                    idx_test_list = [ idx.start() for idx in itr_test ]
+                    idx_test_list.append(0)
+                    idx_test_list = sorted(idx_test_list)
+                    text_data_test = text_data0[idx_test_list[-1]:]
                     match0 = re.search(r'<RESIDENTIAL ADDRESS>', text_data1)
                     match1 = re.search(r'<BUSINESS ADDRESS>', text_data1)
-                    if match0 is not None:
+                    if match0 is not None or match1 is not None:
                         match0 = re.search(r' <', text_data1)
                         match1 = re.search(r'\t', text_data1)
                         str0 = text_data1[:match0.start()]
@@ -133,120 +129,136 @@ def extract_business(max_chars, business_list, text_data):
                         matchA = re.search(r'<OCCUPATION>', str_tmp)
                         matchB = re.search(r'<BUSINESS>', str_tmp)
                         if matchA is None and matchB is None and \
-                           len(str0) <= len(business_list[i]) + 2:
+                           len(str0) <= len(business) + 2:
                             str1 = ' <BUSINESS>' + str_tmp
                             str2 = text_data1[match1.start():]
+                            str0 = '!!!' + str0.replace(' ', '!!!') + '!!!'
                             text_data1 = str1 + '\tNA\t' + str0 + str2
-                        text_data = text_data0 + text_data1 + text_data2
-                    elif match1 is not None:
-                        match0 = re.search(r' <BUSINESS ADDRESS>', text_data1)
-                        match1 = re.search(r'\t', text_data1)
-                        if match0 is not None:
-                            str0 = text_data1[:match0.start()]
-                            str_tmp = text_data1[match0.start()+1:match1.start()]
-                            if len(str(0)) <= len(business_list[i]) + 2:
-                                str1 = ' <BUSINESS>' + str_tmp
-                                str2 = text_data1[match1.start():]
-                                text_data1 = str1 + '\tNA\t' + str0 + str2
                             text_data = text_data0 + text_data1 + text_data2
-    text_data = text_data.replace('\t ', '\t')
-    text_data = text_data.replace(' \t', '\t')
-    text_data = text_data.replace('  ', ' ')
-    text_data = text_data[1:-1]
-    return text_data
-    
-#
-def extract_occupation(generic_flg, max_chars, occupation_list, text_data):
-    text_data = ''.join(text_data)
-    text_data = ' ' + text_data + ' '
-    text_data = mark_long_entries(max_chars, text_data)
-    for occupation in occupation_list:
-        itr0 = re.finditer(' ' + occupation + ' ', text_data)
-        itr1 = re.finditer(' ' + occupation + '\t', text_data)
-        idx_list0 = [ idx.start() for idx in itr0 ]
-        idx_list1 = [ idx.start() for idx in itr1 ]
-        idx_list0 = sorted(list(set(idx_list0) | set(idx_list1)))
-        for _ in range(len(idx_list0)):
-            itr1 = re.finditer(' ' + occupation + ' ', text_data)
-            itr2 = re.finditer(' ' + occupation + '\t', text_data)
-            idx_list1 = [ idx.start() for idx in itr1 ]
-            idx_list2 = [ idx.start() for idx in itr2 ]
-            idx_list1 = sorted(list(set(idx_list1) | set(idx_list2)))
-            if len(idx_list1) >= 1:
-                idx = idx_list1[0]
-                text_data0 = text_data[:idx]
-                text_data_tmp = text_data[idx:]
-                match = re.search(r'( |!!!)<NEWLINE> ', text_data_tmp)
-                text_data1 = text_data_tmp[:match.start()]
-                text_data2 = text_data_tmp[match.start():]
-                match = re.search(r'<RESIDENTIAL ADDRESS>', text_data1)
-                if match is not None:
-                    match0 = re.search(r' <', text_data1)
-                    match1 = re.search(r'\t', text_data1)
-                    str0 = text_data1[:match0.start()]
-                    str_tmp = text_data1[match0.start()+1:match1.start()]
-                    match = re.search(r'<OCCUPATION>', str_tmp)
-                    if match is None:
-                        str2 = text_data1[match1.start():]
-                        str0a = occupation
-                        str0b = str0[len(occupation)+2:]
-                        if len(str0b) > 0:
-                            str1 = '<OCCUPATION><BUSINESS>' + str_tmp
                         else:
-                            str1 = '<OCCUPATION>' + str_tmp
-                            str0b = 'NA'
-                        str0a = '!!!' + str0a.replace(' ', '!!!') + '!!!'
-                        text_data1 = str1 + '\t' + str0a + '\t' + str0b + str2
-                    else:
-                        str1 = str_tmp
-                        str2 = text_data1[match1.start()+1:]
-                        str0a = occupation
-                        str0b = str0[len(occupation)+2:]
-                        str0a = '!!!' + str0a.replace(' ', '!!!') + '!!!'
-                        text_data1 = str1 + '\t' + str0a + str0b + str2
-                    text_data = text_data0 + ' ' + text_data1 + text_data2
-                elif match is None and generic_flg:
-                    match0 = re.search(r' <', text_data1)
-                    match1 = re.search(r'\t', text_data1)
-                    if match0 is not None:
-                        str0 = text_data1[:match0.start()]
-                        str_tmp = text_data1[match0.start()+1:match1.start()]
-                        match = re.search(r'<OCCUPATION>', str_tmp)
-                    else:
-                        str0 = text_data1[:match1.start()]
-                        str_tmp = ''
-                        match = None
-                    if match is None:
-                        str0a = occupation
-                        str0b = str0[len(occupation)+2:]
-                        if len(str0b) > 0:
-                            str1 = ' <OCCUPATION><BUSINESS>' + str_tmp
-                        else:
-                            str1 = ' <OCCUPATION>' + str_tmp
-                            str0b = 'NA'
-                        str2 = text_data1[match1.start():]
-                        str0a = '!!!' + str0a.replace(' ', '!!!') + '!!!'
-                        text_data1 = str1 + '\t' + str0a + '\t' + str0b + str2
-                        text_data1 = text_data1.replace(' ', '!!!')
+                            text_data1 = text_data1.replace(' ', '!!!')
+                            text_data = text_data0 + text_data1 + text_data2
                     else:
                         text_data1 = text_data1.replace(' ', '!!!')
-                    text_data = text_data0 + text_data1 + text_data2
+                        text_data = text_data0 + text_data1 + text_data2
                 else:
                     text_data1 = text_data1.replace(' ', '!!!')
                     text_data = text_data0 + text_data1 + text_data2
     text_data = text_data.replace('!!!', ' ')
+    text_data = text_data.replace('  ', ' ')
     text_data = text_data.replace('\t ', '\t')
     text_data = text_data.replace(' \t', '\t')
+    text_data = text_data[1:-1]
+    return text_data
+    
+#
+def extract_occupation(max_chars, occupation_value_list_txt, 
+                       occupation_determiner_value_list, text_data):
+    text_data = ''.join(text_data)
+    text_data = ' ' + text_data + ' '
+    text_data = mark_long_entries(max_chars, text_data)
+    valid_determiner_list = ['']
+    for determiner in occupation_determiner_value_list:
+        match = re.search(determiner, text_data)
+        if match is not None:
+            #valid_determiner_list.append(determiner)
+            valid_determiner_list.append(determiner + ' ')
+    valid_determiner_list.sort(key = lambda x:len(x), reverse = True)
+    with open(occupation_value_list_txt, 'r') as f:
+        for occupation_base in f:
+            occupation_base = occupation_base[:-1]
+            occupation_is_upper = occupation_base[0].isupper()
+            for determiner in valid_determiner_list:
+                if len(determiner) > 0 and occupation_is_upper:
+                    determiner = determiner[0].upper() + determiner[1:]
+                occupation = determiner + occupation_base
+                itr0 = re.finditer(' ' + occupation + ' ', text_data)
+                itr1 = re.finditer(' ' + occupation + '\t', text_data)
+                idx_list0 = [ idx.start() for idx in itr0 ]
+                idx_list1 = [ idx.start() for idx in itr1 ]
+                idx_list0 = sorted(list(set(idx_list0) | set(idx_list1)))
+                for _ in range(len(idx_list0)):
+                    itr1 = re.finditer(' ' + occupation + ' ', text_data)
+                    itr2 = re.finditer(' ' + occupation + '\t', text_data)
+                    idx_list1 = [ idx.start() for idx in itr1 ]
+                    idx_list2 = [ idx.start() for idx in itr2 ]
+                    idx_list1 = sorted(list(set(idx_list1) | set(idx_list2)))
+                    if len(idx_list1) >= 1:
+                        idx = idx_list1[0]
+                        text_data0 = text_data[:idx]
+                        text_data_tmp = text_data[idx:]
+                        match = re.search(r'( |!!!)<NEWLINE> ', text_data_tmp)
+                        text_data1 = text_data_tmp[:match.start()]
+                        text_data2 = text_data_tmp[match.start():]
+                        itr_test = re.finditer(r'<NEWLINE>', text_data0)
+                        idx_test_list = [ idx.start() for idx in itr_test ]
+                        idx_test_list.append(0)
+                        idx_test_list = sorted(idx_test_list)
+                        text_data_test = text_data0[idx_test_list[-1]:]
+                        match0 = re.search(r'\t', text_data_test)
+                        match1 = re.search(r'<OCCUPATION>', text_data1)
+                        if match0 is None and match1 is None:
+                            match = re.search(r'<RESIDENTIAL ADDRESS>', text_data1)
+                            if match is not None:
+                                match0 = re.search(r' <', text_data1)
+                                match1 = re.search(r'\t', text_data1)
+                                str0 = text_data1[:match0.start()]
+                                str_tmp = text_data1[match0.start()+1:match1.start()]
+                                str2 = text_data1[match1.start():]
+                                str0a = occupation
+                                str0b = str0[len(occupation)+2:]
+                                if len(str0b) > 0:
+                                    str1 = '<OCCUPATION><BUSINESS>' + str_tmp
+                                else:
+                                    str1 = '<OCCUPATION>' + str_tmp
+                                    str0b = 'NA'
+                                str0a = '!!!' + str0a.replace(' ', '!!!') + '!!!'
+                                text_data1 = str1 + '\t' + str0a + '\t' + str0b + str2
+                                text_data = text_data0 + ' ' + text_data1 + text_data2
+                            elif match is None:
+                                match0 = re.search(r' <', text_data1)
+                                match1 = re.search(r'\t', text_data1)
+                                if match0 is not None:
+                                    str0 = text_data1[:match0.start()]
+                                    str_tmp = text_data1[match0.start()+1:match1.start()]
+                                else:
+                                    str0 = text_data1[:match1.start()]
+                                    str_tmp = ''
+                                if match is None:
+                                    str0a = occupation
+                                    str0b = str0[len(occupation)+2:]
+                                    if len(str0b) > 0:
+                                        str1 = ' <OCCUPATION><BUSINESS>' + str_tmp
+                                    else:
+                                        str1 = ' <OCCUPATION>' + str_tmp
+                                        str0b = 'NA'
+                                    str2 = text_data1[match1.start():]
+                                    str0a = '!!!' + str0a.replace(' ', '!!!') + '!!!'
+                                    text_data1 = str1 + '\t' + str0a + '\t' + str0b + str2
+                                    text_data1 = text_data1.replace(' ', '!!!')
+                                else:
+                                    text_data1 = text_data1.replace(' ', '!!!')
+                                text_data = text_data0 + text_data1 + text_data2
+                            else:
+                                text_data1 = text_data1.replace(' ', '!!!')
+                                text_data = text_data0 + text_data1 + text_data2
+                        else:
+                            text_data1 = text_data1.replace(' ', '!!!')
+                            text_data = text_data0 + text_data1 + text_data2
+    text_data = text_data.replace('!!!', ' ')
     text_data = text_data.replace('  ', ' ')
+    text_data = text_data.replace('\t ', '\t')
+    text_data = text_data.replace(' \t', '\t')
     text_data = text_data[1:-1]
     return text_data
 
 #
-def extract_occupation_and_business(max_chars, executive_occupation_value_list, business_value_list, 
-                                    generic_occupation_value_list, text_data):
-    text_data = extract_occupation(False, max_chars, executive_occupation_value_list, text_data)
-    text_data = extract_occupation(True, max_chars, generic_occupation_value_list, text_data)
-    text_data = extract_business(max_chars, business_value_list, text_data)
+def extract_occupation_and_business(max_chars, business_value_list_txt, 
+                                    occupation_value_list_txt, 
+                                    occupation_determiner_value_list, text_data):
+    text_data = extract_occupation(max_chars, occupation_value_list_txt, 
+                                   occupation_determiner_value_list, text_data)
+    text_data = extract_business(max_chars, business_value_list_txt, text_data)
     text_data = extract_second_set_parentheses(text_data)
     text_data = indicate_missing_occupation_or_business(text_data)
     return text_data
