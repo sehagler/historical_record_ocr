@@ -20,7 +20,7 @@ class file_writer(object):
             
     # append entries to txt-file
     def _append_entry_to_txt_file(self, entry):
-        with open(self._filename, "a") as myfile:
+        with open(self._filename, 'a') as myfile:
             myfile.write(entry)
     
     #
