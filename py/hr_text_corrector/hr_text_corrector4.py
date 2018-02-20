@@ -77,10 +77,11 @@ def correct_text_data(first_name_abbr_list_dict_upper_2, general_abbr_dict_upper
     text_data = ''.join(text_data)
     text_data = text_data.upper()
     text_data = add_spaces(text_data)
-    text_data = dict_correction(False, False, first_name_abbr_list_dict_upper_2, text_data)
+    text_data = dict_correction(True, False, first_name_abbr_list_dict_upper_2, text_data)
     text_data = dict_correction(False, True, general_abbr_dict_upper_2, text_data)
     text_data = dict_correction(False, False, special_abbr_dict_upper_2, text_data)
     text_data = remove_spaces(text_data)
+    text_data = text_data.replace('  ', ' ')
     return text_data
 
 #

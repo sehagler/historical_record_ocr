@@ -1,6 +1,7 @@
 # Imports
 from nltk.corpus import words
 import numpy as np
+import pickle
 import re
 import sys
 
@@ -11,9 +12,8 @@ from file_writer import file_writer
 
 #
 def hr_text_corrector1(columns_per_iteration, sect_dir, file_idx, pdf_name, 
-                       generic_business_dict_both_2, hyphenated_executive_occupation_dict_both_2,
-                       hyphenated_generic_occupation_dict_both_2, internal_ref_abbr_dict_both_2,
-                       unhyphenated_executive_occupation_dict_both_2, unhyphenated_generic_occupation_dict_both_2, 
+                       generic_business_dict_both_2, hyphenated_occupation_dict_both_2_pkl,
+                       internal_ref_abbr_dict_both_2, unhyphenated_occupation_dict_both_2_pkl, 
                        executive_occupation_key_list, generic_occupation_key_list):
     
     #
@@ -25,6 +25,12 @@ def hr_text_corrector1(columns_per_iteration, sect_dir, file_idx, pdf_name,
                            str(file_idx) + '.txt'
     directory_txt_outfile = directory_txt_dir + pdf_name[:len(pdf_name)-4] + \
                             str(file_idx+1) + '.txt'
+        
+    #
+    hyphenated_occupation_dict_both_2 = \
+        pickle.load(open(hyphenated_occupation_dict_both_2_pkl, 'rb'))
+    unhyphenated_occupation_dict_both_2 = \
+        pickle.load(open(unhyphenated_occupation_dict_both_2_pkl, 'rb'))
 
     #
     words_lower = [word.lower() for word in words.words()]
@@ -84,11 +90,9 @@ def hr_text_corrector1(columns_per_iteration, sect_dir, file_idx, pdf_name,
                             entry_data = ' ' + entry_data + ' <NEWLINE>'
                         text_data.append(entry_data)
                     text_data = correct_text_data(generic_business_dict_both_2,
-                                                  hyphenated_executive_occupation_dict_both_2,
-                                                  hyphenated_generic_occupation_dict_both_2,
+                                                  hyphenated_occupation_dict_both_2,
                                                   internal_ref_abbr_dict_both_2,
-                                                  unhyphenated_executive_occupation_dict_both_2,
-                                                  unhyphenated_generic_occupation_dict_both_2,
+                                                  unhyphenated_occupation_dict_both_2,
                                                   words_lower, executive_occupation_key_list,
                                                   generic_occupation_key_list, text_data)
                     write_to_file(fl_wrtr, metadata, text_data)
@@ -131,11 +135,9 @@ def hr_text_corrector1(columns_per_iteration, sect_dir, file_idx, pdf_name,
                     entry_data = ' ' + entry_data + ' <NEWLINE>'
                 text_data.append(entry_data)
             text_data = correct_text_data(generic_business_dict_both_2,
-                                          hyphenated_executive_occupation_dict_both_2,
-                                          hyphenated_generic_occupation_dict_both_2,
+                                          hyphenated_occupation_dict_both_2,
                                           internal_ref_abbr_dict_both_2,
-                                          unhyphenated_executive_occupation_dict_both_2,
-                                          unhyphenated_generic_occupation_dict_both_2,
+                                          unhyphenated_occupation_dict_both_2,
                                           words_lower, executive_occupation_key_list,
                                           generic_occupation_key_list, text_data)
             write_to_file(fl_wrtr, metadata, text_data)
@@ -265,9 +267,12 @@ def correct_split_words(case_flg, words_lower, occupation_key_list, text_data):
 
 #
 def correct_spurious_punctuation(text_data):
-    text_data = text_data.replace('.', ' ')
     text_data = text_data.replace('-(', ' (')
     text_data = text_data.replace(')-', ') ')
+    text_data = text_data.replace('((', '(')
+    text_data = text_data.replace('( (', '(')
+    text_data = text_data.replace('))', ')')
+    text_data = text_data.replace(') )', ')')
     itr = re.finditer(r'\?', text_data)
     idxs = [idx.start() for idx in itr]
     for i in range(len(idxs)):
@@ -288,6 +293,7 @@ def correct_spurious_spaces(text_data):
     text_data = re.sub(' \)', ')', text_data)
     text_data = re.sub(' -', '-', text_data)
     text_data = re.sub('- ', '-', text_data)
+    text_data = re.sub('   ', ' ', text_data)
     text_data = re.sub('  ', ' ', text_data)
     match_strs = [ 'Tel [A-Za-z]+ [A-Za-z]+ [0-9]{4}' ]
     for match_str in match_strs:
@@ -301,24 +307,21 @@ def correct_spurious_spaces(text_data):
     return text_data
     
 #
-def correct_text_data(generic_business_dict_both_2, hyphenated_executive_occupation_dict,
-                      hyphenated_generic_occupation_dict, internal_ref_abbr_dict_both_2, 
-                      unhyphenated_executive_occupation_dict, unhyphenated_generic_occupation_dict, 
+def correct_text_data(generic_business_dict_both_2, hyphenated_occupation_dict,
+                      internal_ref_abbr_dict_both_2, unhyphenated_occupation_dict, 
                       words_lower, executive_occupation_key_list, generic_occupation_key_list, text_data):
     occupation_key_list = executive_occupation_key_list
     occupation_key_list.extend(generic_occupation_key_list)
     text_data = ''.join(text_data)
     text_data = correct_line_continuation(text_data)
     text_data = remove_spurious_marks(text_data)
+    text_data = correct_spurious_punctuation(text_data)
     text_data = correct_spurious_spaces(text_data)
     text_data = add_spaces(text_data)
-    text_data = correct_spurious_punctuation(text_data)
-    text_data = correct_split_words(0, words_lower, occupation_key_list, text_data)
+    #text_data = correct_split_words(0, words_lower, occupation_key_list, text_data)
     text_data = dict_correction(False, False, generic_business_dict_both_2, text_data)
-    text_data = dict_correction(True, False, hyphenated_executive_occupation_dict, text_data)
-    text_data = dict_correction(True, False, hyphenated_generic_occupation_dict, text_data)
-    text_data = dict_correction(True, True, unhyphenated_executive_occupation_dict, text_data)
-    text_data = dict_correction(True, True, unhyphenated_generic_occupation_dict, text_data)
+    text_data = dict_correction(True, False, hyphenated_occupation_dict, text_data)
+    text_data = dict_correction(True, True, unhyphenated_occupation_dict, text_data)
     text_data = dict_correction(False, False, internal_ref_abbr_dict_both_2, text_data)
     text_data = correct_split_words(1, words_lower, occupation_key_list, text_data)
     text_data = remove_spaces(text_data)
@@ -342,10 +345,14 @@ def get_excluded_surnames_list(text_data):
     surnames = []
     for i in range(len(surnames_tmp)):
         entry = surnames_tmp[i]
-        if entry.isdigit():
-            excluded_surnames_list.append(entry)
-        else:
+        isalpha_flg = True
+        for j in entry:
+            if not j.isalpha():
+                isalpha_flg = False
+        if isalpha_flg:
             surnames.append(entry)
+        else:
+            excluded_surnames_list.append(entry)
     if len(surnames) > 4:
         surnames_inits = []
         for i in range(len(surnames)):
@@ -382,17 +389,24 @@ def parse_column(excluded_surnames_list, words_lower, text_data, metadata, fl_wr
     for i in range(len(text_data)):
         line_metadata = metadata[i]
         line_data = text_data[i]
-        line_data = correct_missing_space(words_lower, line_data)
-        line_data = correct_ditto(line_data)
-        line_data = correct_digits(line_data)
-        line_data = correct_h_r_address(line_data)
-        line_data, current_surname = resolve_dittos(line_data, current_surname)
-        current_surname_tmp = ''.join(current_surname)
-        if len(excluded_surnames_list) > 0:
-            for i in range(len(excluded_surnames_list)):
-                if current_surname_tmp.upper() == excluded_surnames_list[i]:
-                    current_surname = []
         if retain_entry(line_data):
+            line_data = correct_missing_space(words_lower, line_data)
+            line_data = correct_ditto(line_data)
+            line_data = correct_digits(line_data)
+            line_data = correct_h_r_address(line_data)
+            line_data, current_surname = resolve_dittos(line_data, current_surname)
+            current_surname_tmp = ''.join(current_surname)
+            if len(excluded_surnames_list) > 0:
+                isalpha_flg = True
+                for j in current_surname_tmp:
+                    if not j.isalpha():
+                        isalpha_flg = False
+                if isalpha_flg:
+                    for i in range(len(excluded_surnames_list)):
+                        if current_surname_tmp.upper() == excluded_surnames_list[i]:
+                            current_surname = []
+                else:
+                    current_surname = []
             if len(line_data) > 0:
                 entry = line_metadata + '\t' + line_data + '\n'
                 entries.append(entry)
@@ -406,9 +420,12 @@ def remove_spaces(text_data):
 
 #
 def remove_spurious_marks(text_data):
-    text_data = re.sub(' , ', '  ', text_data)
-    text_data = re.sub(' \. ', '  ', text_data)
-    text_data = re.sub('_', ' ', text_data)
+    text_data = text_data.replace(':', ' ')
+    text_data = text_data.replace(',', ' ')
+    text_data = text_data.replace('!', ' ')
+    text_data = text_data.replace('.', ' ')
+    text_data = text_data.replace('*', ' ')    
+    text_data = text_data.replace('_', ' ')
     return text_data
 
 #
@@ -431,13 +448,14 @@ def retain_entry(line_data):
     if match is not None:
         if match.group(0) == line_data:
             retain_entry_flg = False
-    match = re.search('[A-Za-z]+ SEE ', line_data.upper())
-    if match is not None:
+    match0 = re.search('ALSO', line_data.upper())
+    match1 = re.search('SEE', line_data.upper())
+    if match0 is not None and match1 is not None:
         retain_entry_flg = False
     match = re.search(' DIED ', line_data.upper())
     if match is not None:
         retain_entry_flg = False
-    match = re.search(' MOVED TO ', line_data.upper())
+    match = re.search('MOVED TO', line_data.upper())
     if match is not None:
         retain_entry_flg = False
     return retain_entry_flg
